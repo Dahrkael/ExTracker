@@ -7,14 +7,17 @@ defmodule ExTracker.Router do
   plug Plug.Logger
   plug Plug.Static, at: "/assets", from: @assets_folder
   plug :match
-  plug Plug.Parsers, parsers: [], pass: ["text/html"], validate_utf8: true
+  #plug Plug.Parsers, parsers: [:urlencoded, :multipart], pass: ["*/*"], validate_utf8: false
+  plug Plug.Parsers, parsers: [], pass: ["text/html"], validate_utf8: false
   plug :dispatch
 
   # client announcements
   get "/announce" do
     {status, response} = ExTracker.Processors.Announcement.process(conn.remote_ip, conn.query_params)
+
     conn
-    |> put_resp_content_type("text/plain")
+    |> put_resp_content_type("application/octet-stream", nil)
+    #|> put_resp_content_type("text/plain", nil)
     |> put_resp_header("cache-control", "no-cache")
     |> send_resp(status, response)
 
