@@ -10,7 +10,7 @@ defmodule ExTracker.Application do
     children = [
       # Starts a worker by calling: ExTracker.Worker.start_link(arg)
       { ExTracker.SwarmFinder, {}},
-      { Plug.Cowboy, scheme: :http, plug: ExTracker.Router, options: [ port: 8080, dispatch: dispatch() ] },
+      { Plug.Cowboy, scheme: :http, plug: ExTracker.Router, options: [ port: 6969, dispatch: dispatch() ] },
       #{ Plug.Cowboy, scheme: :https, plug: ExTracker.Router, options: [ port: 443, dispatch: dispatch() ] }
     ]
 
