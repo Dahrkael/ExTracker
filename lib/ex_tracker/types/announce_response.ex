@@ -1,6 +1,6 @@
 defmodule ExTracker.Types.AnnounceResponse do
 
-  def generate_success(peer_list, compact) do
+  def generate_success(peer_list) do
     %{
       #warning message: (new, optional) Similar to failure reason, but the response still gets processed normally. The warning message is shown just like an error.
       #interval: Interval in seconds that the client should wait between sending regular requests to the tracker.
@@ -18,8 +18,9 @@ defmodule ExTracker.Types.AnnounceResponse do
       #    ip: peer's IP address either IPv6 (hexed) or IPv4 (dotted quad) or DNS name (string)
       #    port: peer's port number (integer)
       #peers: (binary model) Instead of using the dictionary model described above, the peers value may be a string consisting of multiples of 6 bytes. First 4 bytes are the IP address and last 2 bytes are the port number. All in network (big endian) notation.
-      "peers" => %{}
+      "peers" => peer_list
     }
+
   end
 
   def generate_failure(reason) do

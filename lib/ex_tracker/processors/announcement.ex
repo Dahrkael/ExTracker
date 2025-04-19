@@ -8,68 +8,89 @@ defmodule ExTracker.Processors.Announcement do
 
   # entrypoint for client's "/announce" requests
   def process(source_ip, params) do
-    request = struct!(AnnounceRequest, params)
-    peer_id = PeerID.new(source_ip, request.port)
+    case AnnounceRequest.parse(params) do
+      {:ok, request} ->
+        client = PeerID.new(source_ip, request.port)
 
-    with {:ok, hash} <- validate_hash(request.info_hash), # validate info_hash
-      {:ok, event} <- process_event(request), # check event first as its the simplest
-      {:ok, swarm} <- get_swarm(hash), # find swarm based on info_hash
-      {:ok, peer_data} <- get_peer(swarm, peer_id), # retrieve or create peer data
-      {:ok, peer_data} <- update_stats(swarm, peer_id, peer_data, event), # update peer stats
-      {:ok, peer_list} <- generate_peer_list(swarm, peer_id, peer_data, event, request) # generate peer list
-      do
-        # bencoded response
-        generate_success_response(peer_list)
-      else
-        {:unknownevent, event} -> {400, "invalid event: #{event}"}
-        {:error, error} -> {500, "error: #{error}"}
-        _ -> {500, "nope"}
-      end
+        with {:ok, event} <- process_event(request.event), # check event first as its the simplest
+          {:ok, swarm} <- get_swarm(request.info_hash), # find swarm based on info_hash
+          {:ok, peer_data} <- get_peer(swarm, client), # retrieve or create peer data
+          {:ok, peer_data} <- update_stats(swarm, client, peer_data, event), # update peer stats
+          {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request) # generate peer list
+        do
+          # bencoded response
+          generate_success_response(peer_list)
+        else
+          {:error, error} -> generate_failure_response(error)
+          _ -> {500, "nope"}
+        end
+      {:error, error} ->
+        generate_failure_response(error)
+    end
   end
 
   defp get_swarm(hash) do
-    swarm = ExTracker.SwarmFinder.find(hash)
+    swarm = ExTracker.SwarmFinder.find_or_create(hash)
+    IO.inspect(swarm, label: "get_swarm")
     {:ok, swarm}
   end
 
-  defp get_peer(swarm, peer_id) do
-    case ExTracker.Swarm.find_peer(swarm, peer_id) do
+  defp get_peer(swarm, client) do
+    case ExTracker.Swarm.find_peer(swarm, client) do
       {:ok, data} ->
+        IO.inspect(data, label: "find_peer")
         {:ok, data}
       :notfound ->
-        # TODO add only if event contains 'started'
-        case ExTracker.Swarm.add_peer(swarm, peer_id) do
-          {:ok, data} -> {:ok, data}
+        case ExTracker.Swarm.add_peer(swarm, client) do
+          {:ok, data} ->
+            IO.inspect(data, label: "add_peer")
+            {:ok, data}
            {:error, error} -> {:error, error}
         end
     end
   end
 
-  defp process_event(request) do
-    case Map.fetch(request, :event) do
-      {:ok, "started"} -> {:ok, :started}
-      {:ok, "stopped"} -> {:ok, :stopped}
-      {:ok, "completed"} -> {:ok, :completed}
-      :error -> {:ok, :updated} # event missing
-      other -> {:unknownevent, other}
+  defp process_event(event) do
+    case event do
+      :invalid -> {:error, "invalid  event"}
+      _ -> {:ok, event}
     end
   end
 
-  defp update_stats(swarm, peer_id, peer_data, event) do
-
+  defp update_stats(swarm, client, peer_data, event) do
+    {:ok, peer_data}
   end
 
-  defp generate_peer_list(swarm, peer_id, peer_data, event, request) do
-    # :stopped = 0
-    # peer_data.left == 0 -> leeches || seeds
+  defp generate_peer_list(swarm, client, peer_data, event, request) do
+    # TODO return leechers if its a seeder and viceversa
     desired_total = if request.numwant > 25, do: 25, else: request.numwant
+    IO.inspect(desired_total, label: "desired_total")
+    peer_list =
+      ExTracker.Swarm.get_peers(swarm)
+      |> IO.inspect(label: "peer_list")
+      |> Enum.take_random(desired_total)
+      |> IO.inspect(label: "peer_list random")
+      |> Enum.map(fn peer ->
+        {id, data} = peer
+        case request.compact do
+          true -> ipv4_to_bytes(id.ip) <> port_to_bytes(id.port)
+          false -> %{"peer id" => data.id, "ip" => id.ip, "port" => id.port}
+        end
+      end)
+
+      IO.inspect(peer_list, label: "peer_list final")
+    case request.compact do
+      true -> {:ok, IO.iodata_to_binary(peer_list)}
+      false -> {:ok, peer_list}
+    end
   end
 
   defp generate_success_response(peer_list) do
     response =
-      AnnounceResponse.generate_success(peer_list, false)
+      AnnounceResponse.generate_success(peer_list)
       |> Benx.encode()
-    {200, "#{response}"}
+      |> IO.iodata_to_binary()
+    {200, response}
   end
 
   defp generate_failure_response(reason) do
