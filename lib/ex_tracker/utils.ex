@@ -1,5 +1,17 @@
 defmodule ExTracker.Utils do
 
+  def ipv4_to_bytes(ip) when is_tuple(ip) and tuple_size(ip) == 4 do
+    ip |> Tuple.to_list() |> :binary.list_to_bin()
+  end
+
+  def ipv4_to_bytes(ip) do
+    ip |> String.split(".") |> Enum.map(&String.to_integer/1) |> :binary.list_to_bin()
+  end
+
+  def port_to_bytes(port) do
+    <<port::16>>
+  end
+
   # v1 hex-string hash (40 bytes, SHA-1)
   def validate_hash(hash) when is_binary(hash) and byte_size(hash) == 40 do
     with true <- String.valid?(hash, :fast_ascii),
@@ -23,5 +35,4 @@ defmodule ExTracker.Utils do
   def validate_hash(hash) when is_binary(hash) and byte_size(hash) == 20, do: {:ok, hash}
   def validate_hash(hash) when is_list(hash), do: hash |> :erlang.list_to_binary() |> validate_hash()
   def validate_hash(_hash), do: {:error, "invalid hash"}
-
 end
