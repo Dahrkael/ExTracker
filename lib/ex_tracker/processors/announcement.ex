@@ -31,20 +31,16 @@ defmodule ExTracker.Processors.Announcement do
 
   defp get_swarm(hash) do
     swarm = ExTracker.SwarmFinder.find_or_create(hash)
-    IO.inspect(swarm, label: "get_swarm")
     {:ok, swarm}
   end
 
   defp get_peer(swarm, client) do
     case ExTracker.Swarm.find_peer(swarm, client) do
       {:ok, data} ->
-        IO.inspect(data, label: "find_peer")
         {:ok, data}
       :notfound ->
         case ExTracker.Swarm.add_peer(swarm, client) do
-          {:ok, data} ->
-            IO.inspect(data, label: "add_peer")
-            {:ok, data}
+          {:ok, data} -> {:ok, data}
            {:error, error} -> {:error, error}
         end
     end
@@ -64,12 +60,9 @@ defmodule ExTracker.Processors.Announcement do
   defp generate_peer_list(swarm, client, peer_data, event, request) do
     # TODO return leechers if its a seeder and viceversa
     desired_total = if request.numwant > 25, do: 25, else: request.numwant
-    IO.inspect(desired_total, label: "desired_total")
     peer_list =
       ExTracker.Swarm.get_peers(swarm)
-      |> IO.inspect(label: "peer_list")
       |> Enum.take_random(desired_total)
-      |> IO.inspect(label: "peer_list random")
       |> Enum.map(fn peer ->
         {id, data} = peer
         case request.compact do
@@ -78,7 +71,6 @@ defmodule ExTracker.Processors.Announcement do
         end
       end)
 
-      IO.inspect(peer_list, label: "peer_list final")
     case request.compact do
       true -> {:ok, IO.iodata_to_binary(peer_list)}
       false -> {:ok, peer_list}

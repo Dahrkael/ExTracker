@@ -16,16 +16,24 @@ defmodule ExTracker.SwarmFinder do
 
   def find_or_create(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table}] -> table
+      [{^hash, table, _timestamp}] -> table
       _ -> create(hash)
     end
   end
 
   def find(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table}] -> table
+      [{^hash, table, _timestamp}] -> table
       _ -> :error
     end
+  end
+
+  def dump_swarm_list() do
+    IO.inspect(:ets.tab2list(@swarms_table_name))
+  end
+
+  def total_swarm_count() do
+    :ets.tab2list(@swarms_table_name) |> length()
   end
 
   defp create(hash) do
@@ -67,7 +75,7 @@ defmodule ExTracker.SwarmFinder do
 
   # create a table for the new swarm and index it
   defp create_swarm(hash) do
-    table = :ets.new(:swarm, [:public])
+    table = :ets.new(:swarm, [:set, :public])
     timestamp = System.system_time(:millisecond)
     :ets.insert(@swarms_table_name, {hash, table, timestamp})
     table
