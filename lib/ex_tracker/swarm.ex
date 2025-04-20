@@ -37,6 +37,10 @@ defmodule ExTracker.Swarm do
     :ets.tab2list(swarm)
   end
 
+  def get_peer_count(swarm) do
+    :ets.tab2list(swarm) |> length()
+  end
+
 
   #@impl true
   #def handle_call({:get, count}, _from, state) do

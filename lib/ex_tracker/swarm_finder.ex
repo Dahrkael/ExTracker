@@ -28,11 +28,11 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
-  def dump_swarm_list() do
-    IO.inspect(:ets.tab2list(@swarms_table_name))
+  def get_swarm_list() do
+    :ets.tab2list(@swarms_table_name)
   end
 
-  def total_swarm_count() do
+  def get_swarm_count() do
     :ets.tab2list(@swarms_table_name) |> length()
   end
 
