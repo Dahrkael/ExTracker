@@ -12,7 +12,7 @@ defmodule ExTracker.Cmd do
       }
 
       info = case show_peers do
-        true -> Map.put(info, "peers", ExTracker.Swarm.get_peers(table))
+        true -> Map.put(info, "peers", ExTracker.Swarm.get_peers(table, :infinity, false))
         false-> Map.put(info, "peer_count", ExTracker.Swarm.get_peer_count(table))
       end
 
@@ -33,7 +33,7 @@ defmodule ExTracker.Cmd do
       do
         info = %{
           "swarm" => Base.encode16(swarm),
-          "peers" => ExTracker.Swarm.get_peers(swarm)
+          "peers" => ExTracker.Swarm.get_peers(swarm, :infinity, false)
         }
 
         IO.inspect(info)
@@ -46,5 +46,35 @@ defmodule ExTracker.Cmd do
       :error -> {:error, "swarm does not exist"}
       swarm -> {:ok, swarm}
     end
+  end
+
+  def show_peer_count() do
+    swarms = ExTracker.SwarmFinder.get_swarm_list()
+    seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
+      {_hash, table, _timestamp} = swarm
+      total + ExTracker.Swarm.get_peer_count(table)
+    end)
+    IO.inspect(seeder_total, label: "Total peers")
+    :ok
+  end
+
+  def show_leecher_count() do
+    swarms = ExTracker.SwarmFinder.get_swarm_list()
+    seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
+      {_hash, table, _timestamp} = swarm
+      total + (ExTracker.Swarm.get_leechers(table) |> length())
+    end)
+    IO.inspect(seeder_total, label: "Total seeders")
+    :ok
+  end
+
+  def show_seeder_count() do
+    swarms = ExTracker.SwarmFinder.get_swarm_list()
+    seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
+      {_hash, table, _timestamp} = swarm
+      total + (ExTracker.Swarm.get_seeders(table) |> length())
+    end)
+    IO.inspect(seeder_total, label: "Total seeders")
+    :ok
   end
 end

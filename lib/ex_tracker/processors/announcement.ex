@@ -61,13 +61,14 @@ defmodule ExTracker.Processors.Announcement do
     # TODO return leechers if its a seeder and viceversa
     desired_total = if request.numwant > 25, do: 25, else: request.numwant
     peer_list =
-      ExTracker.Swarm.get_peers(swarm)
+      ExTracker.Swarm.get_peers(swarm, :infinity, !request.compact) # return full peers only if its a full response
       |> Enum.take_random(desired_total)
       |> Enum.map(fn peer ->
-        {id, data} = peer
         case request.compact do
-          true -> ipv4_to_bytes(id.ip) <> port_to_bytes(id.port)
-          false -> %{"peer id" => data.id, "ip" => id.ip, "port" => id.port}
+          true -> ipv4_to_bytes(peer.ip) <> port_to_bytes(peer.port)
+          false ->
+            {id, data} = peer
+            %{"peer id" => data.id, "ip" => id.ip, "port" => id.port}
         end
       end)
 

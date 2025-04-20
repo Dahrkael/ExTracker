@@ -29,18 +29,28 @@ defmodule ExTracker.Swarm do
     end
   end
 
-  def get_peers(swarm, count) do
-    :ets.match(swarm, "$1", count)
-  end
 
-  def get_peers(swarm) do
-    :ets.tab2list(swarm)
-  end
+  # return a list of all the peers registered in the swarm  up to 'count', optionally includes their associated data
+  def get_peers(swarm, :infinity, true), do: :ets.match(swarm, :"$1")
+  def get_peers(swarm, :infinity, false), do: :ets.match(swarm, {:"$1", :_})
+  def get_peers(swarm, count, true), do: :ets.match(swarm, :"$1", count)
+  def get_peers(swarm, count, false), do: :ets.match(swarm, {:"$1", :_}, count)
 
   def get_peer_count(swarm) do
     :ets.tab2list(swarm) |> length()
   end
 
+  def get_leechers(swarm) do
+    #spec = :ets.fun2ms(fn {id, data} when data.left > 0 -> id end)
+    spec = [{{:"$1", :"$2"}, [{:>, {:map_get, :left, :"$2"}, 0}], [:"$1"]}]
+    :ets.select(swarm, spec)
+  end
+
+  def get_seeders(swarm) do
+    #spec = :ets.fun2ms(fn {id, data} when data.left == 0 -> id end)
+    spec = [{{:"$1", :"$2"}, [{:==, {:map_get, :left, :"$2"}, 0}], [:"$1"]}]
+    :ets.select(swarm, spec)
+  end
 
   #@impl true
   #def handle_call({:get, count}, _from, state) do
