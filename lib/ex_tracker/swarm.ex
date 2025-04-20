@@ -40,16 +40,52 @@ defmodule ExTracker.Swarm do
     :ets.tab2list(swarm) |> length()
   end
 
-  def get_leechers(swarm) do
+  def get_leechers(swarm, :infinity, true) do
+    #spec = :ets.fun2ms(fn {id, data} = peer when data.left > 0 -> peer end)
+    spec = [{{:"$1", :"$2"}, [{:>, {:map_get, :left, :"$2"}, 0}], [:"$_"]}]
+    :ets.select(swarm, spec)
+  end
+
+  def get_leechers(swarm, count, true) do
+    #spec = :ets.fun2ms(fn {id, data} = peer when data.left > 0 -> peer end)
+    spec = [{{:"$1", :"$2"}, [{:>, {:map_get, :left, :"$2"}, 0}], [:"$_"]}]
+    :ets.select(swarm, spec, count)
+  end
+
+  def get_leechers(swarm, :infinity, false) do
     #spec = :ets.fun2ms(fn {id, data} when data.left > 0 -> id end)
     spec = [{{:"$1", :"$2"}, [{:>, {:map_get, :left, :"$2"}, 0}], [:"$1"]}]
     :ets.select(swarm, spec)
   end
 
-  def get_seeders(swarm) do
+  def get_leechers(swarm, count, false) do
+    #spec = :ets.fun2ms(fn {id, data} when data.left > 0 -> id end)
+    spec = [{{:"$1", :"$2"}, [{:>, {:map_get, :left, :"$2"}, 0}], [:"$1"]}]
+    :ets.select(swarm, spec, count)
+  end
+
+  def get_seeders(swarm, :infinity, true) do
+    #spec = :ets.fun2ms(fn {id, data} = peer when data.left == 0 -> peer end)
+    spec = [{{:"$1", :"$2"}, [{:==, {:map_get, :left, :"$2"}, 0}], [:"$_"]}]
+    :ets.select(swarm, spec)
+  end
+
+  def get_seeders(swarm, count, true) do
+    #spec = :ets.fun2ms(fn {id, data} = peer when data.left == 0 -> peer end)
+    spec = [{{:"$1", :"$2"}, [{:==, {:map_get, :left, :"$2"}, 0}], [:"$_"]}]
+    :ets.select(swarm, spec, count)
+  end
+
+  def get_seeders(swarm, :infinity, false) do
     #spec = :ets.fun2ms(fn {id, data} when data.left == 0 -> id end)
     spec = [{{:"$1", :"$2"}, [{:==, {:map_get, :left, :"$2"}, 0}], [:"$1"]}]
     :ets.select(swarm, spec)
+  end
+
+  def get_seeders(swarm, count, false) do
+    #spec = :ets.fun2ms(fn {id, data} when data.left == 0 -> id end)
+    spec = [{{:"$1", :"$2"}, [{:==, {:map_get, :left, :"$2"}, 0}], [:"$1"]}]
+    :ets.select(swarm, spec, count)
   end
 
   #@impl true

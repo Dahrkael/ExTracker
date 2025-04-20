@@ -62,7 +62,7 @@ defmodule ExTracker.Cmd do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
       {_hash, table, _timestamp} = swarm
-      total + (ExTracker.Swarm.get_leechers(table) |> length())
+      total + (ExTracker.Swarm.get_leechers(table, :infinity, false) |> length())
     end)
     IO.inspect(seeder_total, label: "Total seeders")
     :ok
@@ -72,7 +72,7 @@ defmodule ExTracker.Cmd do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
       {_hash, table, _timestamp} = swarm
-      total + (ExTracker.Swarm.get_seeders(table) |> length())
+      total + (ExTracker.Swarm.get_seeders(table, :infinity, false) |> length())
     end)
     IO.inspect(seeder_total, label: "Total seeders")
     :ok
