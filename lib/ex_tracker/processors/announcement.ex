@@ -16,10 +16,11 @@ defmodule ExTracker.Processors.Announcement do
           {:ok, swarm} <- get_swarm(request.info_hash), # find swarm based on info_hash
           {:ok, peer_data} <- get_peer(swarm, client), # retrieve or create peer data
           {:ok, peer_data} <- update_stats(swarm, client, peer_data, event), # update peer stats
-          {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request) # generate peer list
+          {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request), # generate peer list
+          {:ok, totals} <- get_total_peers(swarm) # get number of seeders and leechers for this swarm
         do
           # bencoded response
-          generate_success_response(peer_list)
+          generate_success_response(peer_list, totals)
         else
           {:error, error} -> generate_failure_response(error)
           _ -> {500, "nope"}
@@ -111,9 +112,16 @@ defmodule ExTracker.Processors.Announcement do
     end
   end
 
-  defp generate_success_response(peer_list) do
+  defp get_total_peers(swarm) do
+    seeders = ExTracker.Swarm.get_seeder_count(swarm)
+    leechers = ExTracker.Swarm.get_leecher_count(swarm)
+    {:ok, {seeders, leechers}}
+  end
+
+  defp generate_success_response(peer_list, totals) do
+    {total_seeders, total_leechers} = totals
     response =
-      AnnounceResponse.generate_success(peer_list)
+      AnnounceResponse.generate_success(peer_list, total_seeders, total_leechers)
       |> Benx.encode()
       |> IO.iodata_to_binary()
     {200, response}

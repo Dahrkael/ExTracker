@@ -1,6 +1,7 @@
 defmodule ExTracker.Swarm do
   alias ExTracker.Types.PeerData
 
+  # try to find and retrieve a peer registered in the specified swarm
   @spec find_peer(swarm :: any(), id :: PeerID) :: {:ok, PeerData} | :notfound
   def find_peer(swarm, id) do
     case :ets.lookup(swarm, id) do
@@ -9,6 +10,7 @@ defmodule ExTracker.Swarm do
     end
   end
 
+  # add a new peer to the specified swarm
   @spec add_peer(swarm :: any(), id :: PeerID) :: {:ok, PeerData} | {:error, any()}
   def add_peer(swarm, id) do
     data = %PeerData{}
@@ -19,6 +21,7 @@ defmodule ExTracker.Swarm do
     end
   end
 
+  # remove an existing peer from the specified swarm
   @spec remove_peer(swarm :: any(), id :: PeerID) :: :ok | :notfound
   def remove_peer(swarm, id) do
     with [{_, _data}] <- :ets.lookup(swarm, id),
@@ -29,16 +32,26 @@ defmodule ExTracker.Swarm do
     end
   end
 
+  # get the total number of peers registered in the specified swarm
+  def get_peer_count(swarm) do
+    :ets.info(swarm, :size)
+  end
+
+  # get the total number of leechers registered in the specified swarm
+  def get_leecher_count(swarm) do
+    get_leechers(swarm, :infinity, false) |> length()
+  end
+
+  # get the total number of seeders registered in the specified swarm
+  def get_seeder_count(swarm) do
+    get_seeders(swarm, :infinity, false) |> length()
+  end
 
   # return a list of all the peers registered in the swarm  up to 'count', optionally includes their associated data
   def get_peers(swarm, :infinity, true), do: :ets.match(swarm, :"$1")
   def get_peers(swarm, :infinity, false), do: :ets.match(swarm, {:"$1", :_})
   def get_peers(swarm, count, true), do: :ets.match(swarm, :"$1", count)
   def get_peers(swarm, count, false), do: :ets.match(swarm, {:"$1", :_}, count)
-
-  def get_peer_count(swarm) do
-    :ets.tab2list(swarm) |> length()
-  end
 
   def get_leechers(swarm, :infinity, true) do
     #spec = :ets.fun2ms(fn {id, data} = peer when data.left > 0 -> peer end)
@@ -87,19 +100,4 @@ defmodule ExTracker.Swarm do
     spec = [{{:"$1", :"$2"}, [{:==, {:map_get, :left, :"$2"}, 0}], [:"$1"]}]
     :ets.select(swarm, spec, count)
   end
-
-  #@impl true
-  #def handle_call({:get, count}, _from, state) do
-    # get at least 33% completes
-  #  completes = Enum.take_random(state.complete, count / 3)
-    # fill the rest with incompletes
-  #  Enum.take_random(state.incomplete, (count / 3) * 2)
-  #  {:reply, state, state}
-  #end
-
-  #@impl true
-  #def handle_call(:scrape, _from, state) do
-  #  response = {state.hash, Enum.count(state.complete), Enum.count(state.incomplete), state.downloaded}
-  #  {:reply, response, state}
-  #end
 end

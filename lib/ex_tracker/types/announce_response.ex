@@ -1,6 +1,6 @@
 defmodule ExTracker.Types.AnnounceResponse do
 
-  def generate_success(peer_list) do
+  def generate_success(peer_list, total_seeders, total_leechers) do
     %{
       #warning message: (new, optional) Similar to failure reason, but the response still gets processed normally. The warning message is shown just like an error.
       #interval: Interval in seconds that the client should wait between sending regular requests to the tracker.
@@ -10,9 +10,9 @@ defmodule ExTracker.Types.AnnounceResponse do
       #tracker id: A string that the client should send back on its next announcements. If absent and a previous announce sent a tracker id, do not discard the old value; keep using it.
       #"tracker id" => "",
       #complete: number of peers with the entire file, i.e. seeders (integer)
-      "complete" => 0,
+      "complete" => total_seeders,
       #incomplete: number of non-seeder peers, aka "leechers" (integer)
-      "incomplete" => 0,
+      "incomplete" => total_leechers,
       #peers: (dictionary model) The value is a list of dictionaries, each with the following keys:
       #    peer id: peer's self-selected ID, as described above for the tracker request (string)
       #    ip: peer's IP address either IPv6 (hexed) or IPv4 (dotted quad) or DNS name (string)
