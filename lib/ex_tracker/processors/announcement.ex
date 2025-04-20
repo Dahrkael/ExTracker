@@ -57,13 +57,46 @@ defmodule ExTracker.Processors.Announcement do
     {:ok, peer_data}
   end
 
+  # the stopped event mean the peer is done with the torrent so it doesn't need more peers
+  defp generate_peer_list(_swarm, _client, _peer_data, :stopped, _request), do: {:ok, []}
+
   defp generate_peer_list(swarm, client, peer_data, event, request) do
-    # TODO return leechers if its a seeder and viceversa
+    need_peer_data = !request.compact
     desired_total = if request.numwant > 25, do: 25, else: request.numwant
-    peer_list =
-      ExTracker.Swarm.get_peers(swarm, :infinity, !request.compact) # return full peers only if its a full response
-      |> Enum.take_random(desired_total)
-      |> Enum.map(fn peer ->
+
+    peer_list = case peer_data.left do
+      0 ->
+        # peer is seeding so try to give it leechers
+        leechers = ExTracker.Swarm.get_leechers(swarm, :infinity, need_peer_data)
+        case length(leechers) do
+          length when length == desired_total ->
+            # if theres just enough peers to fill the list that's great
+            leechers
+          length when length > desired_total ->
+            # if there are more peers than requested then take a random subset
+            Enum.take_random(leechers, desired_total)
+          length when length < desired_total ->
+            # there are not enough leechers so try to fill up with some random seeders
+            ExTracker.Swarm.get_seeders(swarm, :infinity, need_peer_data) |> Enum.take_random(desired_total - length)
+        end
+      _ ->
+        # peer is leeching so try to give it seeders
+        seeders = ExTracker.Swarm.get_seeders(swarm, :infinity, need_peer_data)
+        case length(seeders) do
+          length when length == desired_total ->
+            # if theres just enough peers to fill the list that's great
+            seeders
+          length when length > desired_total ->
+            # if there are more peers than requested then take a random subset
+            Enum.take_random(seeders, desired_total)
+          length when length < desired_total ->
+            # there are not enough seeders so try to fill up with some random leechers
+            ExTracker.Swarm.get_leechers(swarm, :infinity, need_peer_data) |> Enum.take_random(desired_total - length)
+        end
+    end
+
+    # convert the peers to the expected representation for delivery
+    peer_list = Enum.map(peer_list, fn peer ->
         case request.compact do
           true -> ipv4_to_bytes(peer.ip) <> port_to_bytes(peer.port)
           false ->
