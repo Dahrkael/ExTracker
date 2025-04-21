@@ -13,7 +13,7 @@ defmodule ExTracker.Router do
 
   # client announcements
   get "/announce" do
-    {status, response} = ExTracker.Processors.Announcement.process(conn.remote_ip, conn.query_params)
+    {status, response} = ExTracker.Processors.Announce.process(conn.remote_ip, conn.query_params)
 
     conn
     |> put_resp_content_type("application/octet-stream", nil)

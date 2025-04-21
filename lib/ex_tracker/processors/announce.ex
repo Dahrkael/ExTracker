@@ -1,4 +1,4 @@
-defmodule ExTracker.Processors.Announcement do
+defmodule ExTracker.Processors.Announce do
 
   import ExTracker.Utils
   alias ExTracker.Types.AnnounceResponse
