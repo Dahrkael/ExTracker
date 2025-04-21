@@ -33,7 +33,7 @@ defmodule ExTracker.Router do
   get "/about" do
     conn
     |> put_resp_content_type("text/html")
-    |> send_resp(200, "ExTracker")
+    |> send_resp(200, ExTracker.about())
   end
 
   match _ do
