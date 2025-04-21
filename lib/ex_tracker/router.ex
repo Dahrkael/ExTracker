@@ -24,10 +24,13 @@ defmodule ExTracker.Router do
   end
 
   get "/scrape" do
+    {status, response} = ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
+
     conn
-    |> put_resp_content_type("text/plain")
+    |> put_resp_content_type("application/octet-stream", nil)
+    #|> put_resp_content_type("text/plain", nil)
     |> put_resp_header("cache-control", "no-cache")
-    |> send_resp(404, "<h1>Not implemented</h1>")
+    |> send_resp(status, response)
   end
 
   get "/about" do
