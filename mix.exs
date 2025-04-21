@@ -1,10 +1,14 @@
 defmodule ExTracker.MixProject do
   use Mix.Project
 
+  def version() do
+    "0.1.0"
+  end
+
   def project do
     [
       app: :extracker,
-      version: ExTracker.version(),
+      version: version(),
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps()
