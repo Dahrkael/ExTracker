@@ -20,7 +20,7 @@ defmodule ExTracker.Processors.Announcement do
           {:ok, totals} <- get_total_peers(swarm) # get number of seeders and leechers for this swarm
         do
           # bencoded response
-          generate_success_response(peer_list, totals)
+          generate_success_response(peer_list, totals, source_ip)
         else
           {:error, error} -> generate_failure_response(error)
           _ -> {500, "nope"}
@@ -118,10 +118,11 @@ defmodule ExTracker.Processors.Announcement do
     {:ok, {seeders, leechers}}
   end
 
-  defp generate_success_response(peer_list, totals) do
+  defp generate_success_response(peer_list, totals, source_ip) do
     {total_seeders, total_leechers} = totals
     response =
       AnnounceResponse.generate_success(peer_list, total_seeders, total_leechers)
+      |> AnnounceResponse.append_external_ip(source_ip)
       |> Benx.encode()
       |> IO.iodata_to_binary()
     {200, response}

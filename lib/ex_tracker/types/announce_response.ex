@@ -23,6 +23,11 @@ defmodule ExTracker.Types.AnnounceResponse do
 
   end
 
+  # BEP 24 'Tracker Returns External IP' extra field
+  def append_external_ip(response, ip) do
+    Map.put(response, "external ip", ip)
+  end
+
   def generate_failure(reason) do
     %{ "failure reason" => reason }
   end
