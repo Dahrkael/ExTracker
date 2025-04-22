@@ -10,7 +10,7 @@ Implementation Legend:
 ### Tracker-related BitTorrent Enhancement Proposals
 
 #### Final and Active Process BEPs
-- 🔰 **BEP 0:** [The BitTorrent Protocol Specification](https://www.bittorrent.org/beps/bep_0003.html)
+- ✅ **BEP 0:** [The BitTorrent Protocol Specification](https://www.bittorrent.org/beps/bep_0003.html)
 #### Accepted BEPs
 - 🔲 **BEP 15:** [UDP Tracker Protocol](https://www.bittorrent.org/beps/bep_0015.html)
 - ✅ **BEP 23:** [Tracker Returns Compact Peer Lists](https://www.bittorrent.org/beps/bep_0023.html)
