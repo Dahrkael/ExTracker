@@ -21,8 +21,8 @@ defmodule ExTracker.Types.AnnounceRequest do
         |> add_field_no_peer_id(params)
         |> add_field_numwant(params)
         |> add_field_ip(params)
-        |> add_field_key(params)
-        |> add_field_trackerid(params)
+        #|> add_field_key(params)
+        #|> add_field_trackerid(params)
 
       request = Map.merge(mandatories, optionals)
       {:ok, request}
@@ -146,7 +146,7 @@ defmodule ExTracker.Types.AnnounceRequest do
       {:ok, "completed"} -> Map.put(request, :event, :completed)
       {:ok, ""} -> Map.put(request, :event, :updated)
       {:ok, _other} -> Map.put(request, :event, :invalid)
-      :error -> Map.put(request, :event, "")
+      :error -> Map.put(request, :event, :updated)
     end
   end
 

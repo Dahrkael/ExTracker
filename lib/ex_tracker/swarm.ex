@@ -32,6 +32,17 @@ defmodule ExTracker.Swarm do
     end
   end
 
+  @spec update_peer(swarm :: any(), id :: PeerID, data :: PeerData) :: {:ok, PeerData} | {:error, any()}
+  def update_peer(swarm, id, data)  do
+    if(find_peer(swarm, id)) do
+      case :ets.insert(swarm, {id, data}) do
+        true -> {:ok, data}
+        false -> {:error, "peer insertion failed"}
+      end
+    end
+    {:error, "peer not found in swarm"}
+  end
+
   # get the total number of peers registered in the specified swarm
   def get_peer_count(swarm) do
     :ets.info(swarm, :size)

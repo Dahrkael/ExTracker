@@ -15,7 +15,7 @@ defmodule ExTracker.Processors.Announce do
         with {:ok, event} <- process_event(request.event), # check event first as its the simplest
           {:ok, swarm} <- get_swarm(request.info_hash), # find swarm based on info_hash
           {:ok, peer_data} <- get_peer(swarm, client), # retrieve or create peer data
-          {:ok, peer_data} <- update_stats(swarm, client, peer_data, event), # update peer stats
+          {:ok, peer_data} <- update_stats(swarm, client, peer_data, request), # update peer stats
           {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request), # generate peer list
           {:ok, totals} <- get_total_peers(swarm) # get number of seeders and leechers for this swarm
         do
@@ -54,14 +54,36 @@ defmodule ExTracker.Processors.Announce do
     end
   end
 
-  defp update_stats(swarm, client, peer_data, event) do
-    {:ok, peer_data}
+  defp update_stats(swarm, client, peer_data, request) do
+    updated_data = peer_data
+      |> PeerData.set_id(request.peer_id)
+      #|> PeerData.set_key(request.key)
+      |> PeerData.update_uploaded(request.uploaded)
+      |> PeerData.update_downloaded(request.downloaded)
+      |> PeerData.update_left(request.left)
+
+    # increase swarm downloads counter if 'left' reaches zero
+    if peer_data.left > 0 && request.left == 0 do
+    end
+
+    # update peer internal state based on the provided event
+    updated_data =
+      case request.event do
+        :started -> PeerData.update_state(updated_data, :active)
+        :stopped -> PeerData.update_state(updated_data, :gone)
+        :updated -> PeerData.update_state(updated_data, :active)
+        :completed -> updated_data
+      end
+
+    # update the peer info in the swarm
+    ExTracker.Swarm.update_peer(swarm, client, updated_data)
+    {:ok, updated_data}
   end
 
   # the stopped event mean the peer is done with the torrent so it doesn't need more peers
   defp generate_peer_list(_swarm, _client, _peer_data, :stopped, _request), do: {:ok, []}
 
-  defp generate_peer_list(swarm, client, peer_data, event, request) do
+  defp generate_peer_list(swarm, _client, peer_data, _event, request) do
     need_peer_data = !request.compact
     desired_total = if request.numwant > 25, do: 25, else: request.numwant
 
