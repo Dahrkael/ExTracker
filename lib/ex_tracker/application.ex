@@ -6,11 +6,16 @@ defmodule ExTracker.Application do
   use Application
 
   @impl true
-  def start(_type, _args) do
+  def start(_type, args) do
+    # config is loaded from config.exs first then the command line can override whats needed here
+    ExTracker.CLIReader.read(args)
+
+    http_port = Application.get_env(:extracker, :http_port)
+
     children = [
       # Starts a worker by calling: ExTracker.Worker.start_link(arg)
       { ExTracker.SwarmFinder, {}},
-      { Plug.Cowboy, scheme: :http, plug: ExTracker.Router, options: [ port: 6969, dispatch: dispatch() ] },
+      { Plug.Cowboy, scheme: :http, plug: ExTracker.Router, options: [ port: http_port, dispatch: dispatch() ] },
       #{ Plug.Cowboy, scheme: :https, plug: ExTracker.Router, options: [ port: 443, dispatch: dispatch() ] }
     ]
 
