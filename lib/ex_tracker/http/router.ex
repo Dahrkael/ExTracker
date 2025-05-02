@@ -1,4 +1,4 @@
-defmodule ExTracker.Router do
+defmodule ExTracker.HTTP.Router do
   use Plug.Router
   if Mix.env == :dev, do: use Plug.Debugger
 
@@ -13,24 +13,31 @@ defmodule ExTracker.Router do
 
   # client announcements
   get "/announce" do
-    {status, response} = ExTracker.Processors.Announce.process(conn.remote_ip, conn.query_params)
+    {_status, result} = ExTracker.Processors.Announce.process(conn.remote_ip, conn.query_params)
+    # bencoded response
+    response = result |> Benx.encode() |> IO.iodata_to_binary()
 
     conn
     |> put_resp_content_type("application/octet-stream", nil)
     #|> put_resp_content_type("text/plain", nil)
     |> put_resp_header("cache-control", "no-cache")
-    |> send_resp(status, response)
+    |> send_resp(200, response)
 
   end
 
   get "/scrape" do
-    {status, response} = ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
+    # TODO scrapes are supposed to allow multiple 'info_hash' keys to be present to scrape more than one torrent at a time
+    # but apparently the standard requires those keys to have '[]' appended to be treated as a list, otherwise they get overwritten
+    # this probably needs a custom query_string parser at the router level
+    {_status, result} = ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
+    # bencoded response
+    response = result |> Benx.encode() |> IO.iodata_to_binary()
 
     conn
     |> put_resp_content_type("application/octet-stream", nil)
     #|> put_resp_content_type("text/plain", nil)
     |> put_resp_header("cache-control", "no-cache")
-    |> send_resp(status, response)
+    |> send_resp(200, response)
   end
 
   get "/about" do
