@@ -1,14 +1,10 @@
 defmodule ExTracker.Processors.Scrape do
 
-  import ExTracker.Utils
   alias ExTracker.Types.ScrapeResponse
   alias ExTracker.Types.ScrapeRequest
 
   # entrypoint for client's "/scrape" requests
   def process(source_ip, params) do
-    # TODO scrapes are supposed to allow multiple 'info_hash' keys to be present to scrape more than one torrent at a time
-    # but apparently the standard requires those keys to have '[]' appended to be treated as a list, otherwise they get overwritten
-    # this probably needs a custom query_string parser at the router level
     case ScrapeRequest.parse(params) do
       {:ok, request} ->
         with {:ok, swarm} <- get_swarm(request.info_hash), # find swarm based on info_hash
@@ -16,11 +12,10 @@ defmodule ExTracker.Processors.Scrape do
         {:ok, leechers} <- get_total_leechers(swarm), # get number of leechers for this swarm
         {:ok, downloads} <- get_total_downloads(swarm) # get absolute number of downloads for this swarm
         do
-          # bencoded response
           generate_success_response(seeders, leechers, downloads)
         else
           {:error, error} -> generate_failure_response(error)
-          _ -> {500, "nope"}
+          _ -> {:error, "unknown internal error"}
         end
       {:error, error} ->
         generate_failure_response(error)
@@ -47,16 +42,12 @@ defmodule ExTracker.Processors.Scrape do
   end
 
   defp generate_success_response(seeders, leechers, downloads) do
-    response =
-      ScrapeResponse.generate_success(seeders, leechers, downloads)
-      |> Benx.encode()
-    {200, response}
+    response = ScrapeResponse.generate_success(seeders, leechers, downloads)
+    {:ok, response}
   end
 
   defp generate_failure_response(reason) do
-    response =
-      ScrapeResponse.generate_failure(reason)
-      |> Benx.encode()
-    {200, "#{response}"}
+    response = ScrapeResponse.generate_failure(reason)
+    {:error, "#{response}"}
   end
 end

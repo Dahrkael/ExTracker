@@ -19,11 +19,10 @@ defmodule ExTracker.Processors.Announce do
           {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request), # generate peer list
           {:ok, totals} <- get_total_peers(swarm) # get number of seeders and leechers for this swarm
         do
-          # bencoded response
           generate_success_response(peer_list, totals, source_ip)
         else
           {:error, error} -> generate_failure_response(error)
-          _ -> {500, "nope"}
+          _ -> {:error, "unknown internal error"}
         end
       {:error, error} ->
         generate_failure_response(error)
@@ -145,15 +144,11 @@ defmodule ExTracker.Processors.Announce do
     response =
       AnnounceResponse.generate_success(peer_list, total_seeders, total_leechers)
       |> AnnounceResponse.append_external_ip(source_ip)
-      |> Benx.encode()
-      |> IO.iodata_to_binary()
-    {200, response}
+    {:ok, response}
   end
 
   defp generate_failure_response(reason) do
-    response =
-      AnnounceResponse.generate_failure(reason)
-      |> Benx.encode()
-    {200, "#{response}"}
+    response = AnnounceResponse.generate_failure(reason)
+    {:error, "#{response}"}
   end
 end
