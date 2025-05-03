@@ -48,6 +48,6 @@ defmodule ExTracker.Processors.Scrape do
 
   defp generate_failure_response(reason) do
     response = ScrapeResponse.generate_failure(reason)
-    {:error, "#{response}"}
+    {:error, response}
   end
 end
