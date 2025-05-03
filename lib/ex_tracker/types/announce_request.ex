@@ -63,6 +63,8 @@ defmodule ExTracker.Types.AnnounceRequest do
   # port: The port number that the client is listening on. Ports reserved for BitTorrent are typically 6881-6889.
   defp fetch_field_port(params) do
     case Map.fetch(params, "port") do
+      {:ok, port} when is_integer(port) ->
+        {:ok, port}
       {:ok, port} ->
         case Integer.parse(port) do
           {number, _rest} when number >= 0 and number <= 65535 -> {:ok, number}
@@ -76,6 +78,8 @@ defmodule ExTracker.Types.AnnounceRequest do
   # While not explicitly stated in the official specification, the consensus is that this should be the total number of bytes downloaded.
   defp fetch_field_downloaded(params) do
     case Map.fetch(params, "downloaded") do
+      {:ok, downloaded} when is_integer(downloaded) ->
+        {:ok, downloaded}
       {:ok, downloaded} ->
         case Integer.parse(downloaded) do
           {number, _rest} when number >= 0 -> {:ok, number}
@@ -89,6 +93,8 @@ defmodule ExTracker.Types.AnnounceRequest do
   # While not explicitly stated in the official specification, the consensus is that this should be the total number of bytes uploaded.
   defp fetch_field_uploaded(params) do
     case Map.fetch(params, "uploaded") do
+      {:ok, uploaded} when is_integer(uploaded) ->
+        {:ok, uploaded}
       {:ok, uploaded} ->
         case Integer.parse(uploaded) do
           {number, _rest} when number >= 0 -> {:ok, number}
@@ -102,6 +108,8 @@ defmodule ExTracker.Types.AnnounceRequest do
   # Clarification: The number of bytes needed to download to be 100% complete and get all the included files in the torrent.
   defp fetch_field_left(params) do
     case Map.fetch(params, "left") do
+      {:ok, left} when is_integer(left) ->
+        {:ok, left}
       {:ok, left} ->
         case Integer.parse(left) do
           {number, _rest} when number >= 0 -> {:ok, number}
@@ -153,6 +161,8 @@ defmodule ExTracker.Types.AnnounceRequest do
   # numwant: Optional. Number of peers that the client would like to receive from the tracker. This value is permitted to be zero. If omitted, typically defaults to 50 peers.
   defp add_field_numwant(request, params) do
     case Map.fetch(params, "numwant") do
+      {:ok, numwant} when is_integer(numwant) ->
+        Map.put(request, :numwant, numwant)
       {:ok, numwant} ->
         case Integer.parse(numwant) do
           {number, _rest} -> Map.put(request, :numwant, number)
