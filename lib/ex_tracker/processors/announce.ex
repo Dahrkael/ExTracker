@@ -48,7 +48,7 @@ defmodule ExTracker.Processors.Announce do
 
   defp process_event(event) do
     case event do
-      :invalid -> {:error, "invalid  event"}
+      :invalid -> {:error, "invalid event"}
       _ -> {:ok, event}
     end
   end
@@ -84,7 +84,7 @@ defmodule ExTracker.Processors.Announce do
 
   defp generate_peer_list(swarm, _client, peer_data, _event, request) do
     need_peer_data = !request.compact
-    desired_total = if request.numwant > 25, do: 25, else: request.numwant
+    desired_total = if request.numwant > 25 or request.numwant < 0, do: 25, else: request.numwant
 
     peer_list = case peer_data.left do
       0 ->
@@ -123,7 +123,11 @@ defmodule ExTracker.Processors.Announce do
           true -> ipv4_to_bytes(peer.ip) <> port_to_bytes(peer.port)
           false ->
             {id, data} = peer
-            %{"peer id" => data.id, "ip" => id.ip, "port" => id.port}
+            result = %{"ip" => id.ip, "port" => id.port}
+            if request.no_peer_id == false do
+              Map.put(result, "peer id", data.id)
+            end
+            result
         end
       end)
 
@@ -149,6 +153,6 @@ defmodule ExTracker.Processors.Announce do
 
   defp generate_failure_response(reason) do
     response = AnnounceResponse.generate_failure(reason)
-    {:error, "#{response}"}
+    {:error, response}
   end
 end
