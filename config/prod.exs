@@ -8,6 +8,7 @@ config :extracker,
   https_port: 7070,
   udp_enabled: true,
   udp_port: 6969,
+  connection_id_secret: 87178291199,
   scrape_enabled: false,
   force_compact_peers: true,
   return_external_ip: false
