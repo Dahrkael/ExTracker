@@ -11,6 +11,10 @@ require Logger
     # config is loaded from config.exs first then the command line can override whats needed here
     ExTracker.CLIReader.read(args)
 
+    # print out the configuration to be sure what values are being used after reading everything
+    IO.puts(ExTracker.console_about())
+    print_current_config()
+
     required_children = [
       { ExTracker.SwarmFinder, {}}
     ]
@@ -42,6 +46,16 @@ require Logger
         Logger.info("HTTP mode disabled")
         []
     end
+  end
+
+  defp print_current_config() do
+    config =
+      Application.get_all_env(:extracker)
+      |> Enum.sort_by(fn {key, _value} -> key end)
+      |> Enum.map(fn {key, value} -> "#{Atom.to_string(key)}: #{inspect(value)}" end)
+      |> Enum.join("\n")
+
+    IO.puts(["configuration to be used:\n"] ++ config)
   end
 
   defp get_https_children() do
