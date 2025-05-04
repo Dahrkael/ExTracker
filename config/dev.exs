@@ -2,6 +2,7 @@ import Config
 
 config :extracker,
   debug: true,
+  bind_address_ip: {0,0,0,0},
   http_enabled: true,
   http_port: 6969,
   https_enabled: false,

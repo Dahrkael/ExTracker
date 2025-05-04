@@ -32,11 +32,12 @@ defmodule ExTracker.UDP.Router do
       :inet,
       :binary,
       active: :once,
-      reuseaddr: true,
-      reuseport: needs_reuseport(),
-      ip: {0,0,0,0},
-      buffer: Application.get_env(:extracker, :udp_buffer_size)
-    ]) do
+      reuseaddr: true
+    ]
+    ++ set_binding_address()
+    ++ set_socket_buffer()
+    ++ set_reuseport()
+    ) do
       {:ok, socket} ->
         if ExTracker.debug_enabled() do
           Logger.info("#{Process.get(:name)} started on port #{port}")
@@ -53,38 +54,52 @@ defmodule ExTracker.UDP.Router do
     end
   end
 
-  # not pretty but does the job
-  defp needs_reuseport() do
+  defp set_binding_address() do
+    [ip: Application.get_env(:extracker, :bind_address_ipv4, {0,0,0,0})]
+  end
+
+  defp set_reuseport() do
     case Application.get_env(:extracker, :udp_routers, -1) do
-      0 -> false
-      1 -> false
-      _ -> true
+      0 -> []
+      1 -> []
+      _ -> [reuseport: true]
+    end
+  end
+
+  defp set_socket_buffer() do
+    case Application.get_env(:extracker, :udp_buffer_size, -1) do
+      -1 -> []
+      value -> [buffer: value]
     end
   end
 
   defp set_receive_buffer(socket) do
-    with {:ok, value} <- Application.fetch_env(:extracker, :udp_recbuf_size) do
-      case :inet.setopts(socket, [{:recbuf, value}]) do
-        :ok ->
-          if ExTracker.debug_enabled() do
-            Logger.info("#{Process.get(:name)} set receive buffer size to #{value}")
-          end
-        {:error, _error} ->
-          Logger.error("#{Process.get(:name)} failed to change receive buffer size ")
-      end
+    case Application.get_env(:extracker, :udp_recbuf_size, -1) do
+      -1 -> :ok
+      value ->
+        case :inet.setopts(socket, [{:recbuf, value}]) do
+          :ok ->
+            if ExTracker.debug_enabled() do
+              Logger.info("#{Process.get(:name)} set receive buffer size to #{value}")
+            end
+          {:error, _error} ->
+            Logger.error("#{Process.get(:name)} failed to change receive buffer size ")
+        end
     end
   end
 
   defp set_send_buffer(socket) do
-    with {:ok, value} <- Application.fetch_env(:extracker, :udp_sndbuf_size) do
-      case :inet.setopts(socket, [{:sndbuf, value}]) do
-        :ok ->
-          if ExTracker.debug_enabled() do
-            Logger.info("#{Process.get(:name)} set send buffer size to #{value}")
-          end
-        {:error, _error} ->
-          Logger.error("#{Process.get(:name)} failed to change send buffer size ")
-      end
+    case Application.get_env(:extracker, :udp_sndbuf_size, -1) do
+      -1 -> :ok
+      value ->
+        case :inet.setopts(socket, [{:sndbuf, value}]) do
+          :ok ->
+            if ExTracker.debug_enabled() do
+              Logger.info("#{Process.get(:name)} set send buffer size to #{value}")
+            end
+          {:error, _error} ->
+            Logger.error("#{Process.get(:name)} failed to change send buffer size ")
+        end
     end
   end
 
