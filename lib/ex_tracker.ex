@@ -1,5 +1,9 @@
 defmodule ExTracker do
 
+  def hello() do
+    :world
+  end
+
   def version do
     "0.1.0"
   end
