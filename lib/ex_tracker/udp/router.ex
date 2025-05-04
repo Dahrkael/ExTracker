@@ -11,30 +11,42 @@ defmodule ExTracker.UDP.Router do
   @action_error     3
 
   @doc """
-  Starts the UDP Router on the given port
+  Starts a UDP Router on the given port
   """
-  def start_link(port) when is_integer(port) do
-    GenServer.start_link(__MODULE__, port, name: __MODULE__)
+  def start_link(args) do
+    name = Keyword.get(args, :name, __MODULE__)
+    GenServer.start_link(__MODULE__, args, name: name)
   end
 
+  # not pretty but does the job
+  defp needs_reuseport(), do: Application.get_env(:extracker, :udp_routers, 1) > 1
+
   @impl true
-  def init(port) do
-    # open the UDP socket in binary mode, active, and allow address reuse
-    case :gen_udp.open(port, [:inet, :binary, active: :once, reuseaddr: true, ip: {0,0,0,0}]) do
+  def init(args) do
+    index = Keyword.get(args, :index, 0)
+    name = Keyword.get(args, :name, __MODULE__)
+    port = Keyword.get(args, :port, -1)
+
+    Process.put(:index, index)
+    Process.put(:name, name)
+
+    # open the UDP socket in binary mode, active, and allow address (and if needed, port) reuse
+    case :gen_udp.open(port, [:inet, :binary, active: :once, reuseaddr: true, reuseport: needs_reuseport(), ip: {0,0,0,0}]) do
       {:ok, socket} ->
-        Logger.info("UDP router started on port #{port}")
+        Logger.info("#{Process.get(:name)} started on port #{port}")
         {:ok, %{socket: socket, port: port}}
 
       {:error, reason} ->
-        Logger.error("UDP router startup error: #{inspect(reason)}")
+        Logger.error("#{Process.get(:name)} startup error: #{inspect(reason)}")
         {:stop, reason}
     end
   end
 
   @impl true
   def handle_info({:udp, socket, ip, port, data}, state) do
-    # delegate message handling to a Task
-    Task.Supervisor.start_child(ExTracker.UDP.TaskSupervisor, fn ->
+    # delegate message handling to a Task under the associated supervisor
+    supervisor = Process.get(:index) |> ExTracker.UDP.Supervisor.get_task_supervisor_name()
+    Task.Supervisor.start_child(supervisor, fn ->
       process_packet(socket, ip, port, data)
     end)
 
