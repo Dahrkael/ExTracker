@@ -18,15 +18,6 @@ defmodule ExTracker.UDP.Router do
     GenServer.start_link(__MODULE__, args, name: name)
   end
 
-  # not pretty but does the job
-  defp needs_reuseport() do
-    case Application.get_env(:extracker, :udp_routers, -1) do
-      0 -> false
-      1 -> false
-      _ -> true
-    end
-  end
-
   @impl true
   def init(args) do
     index = Keyword.get(args, :index, 0)
@@ -44,12 +35,16 @@ defmodule ExTracker.UDP.Router do
       reuseaddr: true,
       reuseport: needs_reuseport(),
       ip: {0,0,0,0},
-      #recbuf: Application.get_env(:extracker, :udp_recbuf_size),
-      #sndbuf: Application.get_env(:extracker, :udp_sndbuf_size),
-      #buffer: Application.get_env(:extracker, :udp_buffer_size)
+      buffer: Application.get_env(:extracker, :udp_buffer_size)
     ]) do
       {:ok, socket} ->
-        Logger.info("#{Process.get(:name)} started on port #{port}")
+        if ExTracker.debug_enabled() do
+          Logger.info("#{Process.get(:name)} started on port #{port}")
+        end
+
+        set_receive_buffer(socket)
+        set_send_buffer(socket)
+
         {:ok, %{socket: socket, port: port}}
 
       {:error, reason} ->
@@ -58,12 +53,48 @@ defmodule ExTracker.UDP.Router do
     end
   end
 
+  # not pretty but does the job
+  defp needs_reuseport() do
+    case Application.get_env(:extracker, :udp_routers, -1) do
+      0 -> false
+      1 -> false
+      _ -> true
+    end
+  end
+
+  defp set_receive_buffer(socket) do
+    with {:ok, value} <- Application.fetch_env(:extracker, :udp_recbuf_size) do
+      case :inet.setopts(socket, [{:recbuf, value}]) do
+        :ok ->
+          if ExTracker.debug_enabled() do
+            Logger.info("#{Process.get(:name)} set receive buffer size to #{value}")
+          end
+        {:error, _error} ->
+          Logger.error("#{Process.get(:name)} failed to change receive buffer size ")
+      end
+    end
+  end
+
+  defp set_send_buffer(socket) do
+    with {:ok, value} <- Application.fetch_env(:extracker, :udp_sndbuf_size) do
+      case :inet.setopts(socket, [{:sndbuf, value}]) do
+        :ok ->
+          if ExTracker.debug_enabled() do
+            Logger.info("#{Process.get(:name)} set send buffer size to #{value}")
+          end
+        {:error, _error} ->
+          Logger.error("#{Process.get(:name)} failed to change send buffer size ")
+      end
+    end
+  end
+
   @impl true
   def handle_info({:udp, socket, ip, port, data}, state) do
+    name = Process.get(:name)
     # delegate message handling to a Task under the associated supervisor
     supervisor = Process.get(:index) |> ExTracker.UDP.Supervisor.get_task_supervisor_name()
     Task.Supervisor.start_child(supervisor, fn ->
-      process_packet(socket, ip, port, data)
+      process_packet(name, socket, ip, port, data)
     end)
 
     :inet.setopts(socket, active: :once)
@@ -103,19 +134,20 @@ defmodule ExTracker.UDP.Router do
     generate_connection_id(t, ip, port)
   end
 
-  defp process_packet(socket, ip, port, packet) do
+  defp process_packet(name, socket, ip, port, packet) do
     start = System.monotonic_time(:microsecond)
     process_message(socket, ip, port, packet)
     finish = System.monotonic_time(:microsecond)
 
-    elapsed = finish - start
-    if elapsed < 1_000 do
-      Logger.info("udp message processed in: #{elapsed}µs")
-    else
-      ms = System.convert_time_unit(elapsed, :microsecond, :millisecond)
-      Logger.info("udp message processed in: #{ms}ms")
+    if ExTracker.debug_enabled() do
+      elapsed = finish - start
+      if elapsed < 1_000 do
+        Logger.info("#{name}: message processed in #{elapsed}µs")
+      else
+        ms = System.convert_time_unit(elapsed, :microsecond, :millisecond)
+        Logger.info("#{name} message processed in #{ms}ms")
+      end
     end
-
     :ok
   end
 
