@@ -19,7 +19,13 @@ defmodule ExTracker.UDP.Router do
   end
 
   # not pretty but does the job
-  defp needs_reuseport(), do: Application.get_env(:extracker, :udp_routers, 1) > 1
+  defp needs_reuseport() do
+    case Application.get_env(:extracker, :udp_routers, -1) do
+      0 -> false
+      1 -> false
+      _ -> true
+    end
+  end
 
   @impl true
   def init(args) do
@@ -31,7 +37,17 @@ defmodule ExTracker.UDP.Router do
     Process.put(:name, name)
 
     # open the UDP socket in binary mode, active, and allow address (and if needed, port) reuse
-    case :gen_udp.open(port, [:inet, :binary, active: :once, reuseaddr: true, reuseport: needs_reuseport(), ip: {0,0,0,0}]) do
+    case :gen_udp.open(port, [
+      :inet,
+      :binary,
+      active: :once,
+      reuseaddr: true,
+      reuseport: needs_reuseport(),
+      ip: {0,0,0,0},
+      #recbuf: Application.get_env(:extracker, :udp_recbuf_size),
+      #sndbuf: Application.get_env(:extracker, :udp_sndbuf_size),
+      #buffer: Application.get_env(:extracker, :udp_buffer_size)
+    ]) do
       {:ok, socket} ->
         Logger.info("#{Process.get(:name)} started on port #{port}")
         {:ok, %{socket: socket, port: port}}
