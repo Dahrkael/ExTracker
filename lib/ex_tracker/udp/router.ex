@@ -39,9 +39,7 @@ defmodule ExTracker.UDP.Router do
     ++ set_reuseport()
     ) do
       {:ok, socket} ->
-        if ExTracker.debug_enabled() do
-          Logger.info("#{Process.get(:name)} started on port #{port}")
-        end
+        Logger.debug("#{Process.get(:name)} started on port #{port}")
 
         set_receive_buffer(socket)
         set_send_buffer(socket)
@@ -79,9 +77,7 @@ defmodule ExTracker.UDP.Router do
       value ->
         case :inet.setopts(socket, [{:recbuf, value}]) do
           :ok ->
-            if ExTracker.debug_enabled() do
-              Logger.info("#{Process.get(:name)} set receive buffer size to #{value}")
-            end
+            Logger.debug("#{Process.get(:name)} set receive buffer size to #{value}")
           {:error, _error} ->
             Logger.error("#{Process.get(:name)} failed to change receive buffer size ")
         end
@@ -94,9 +90,7 @@ defmodule ExTracker.UDP.Router do
       value ->
         case :inet.setopts(socket, [{:sndbuf, value}]) do
           :ok ->
-            if ExTracker.debug_enabled() do
-              Logger.info("#{Process.get(:name)} set send buffer size to #{value}")
-            end
+            Logger.debug("#{Process.get(:name)} set send buffer size to #{value}")
           {:error, _error} ->
             Logger.error("#{Process.get(:name)} failed to change send buffer size ")
         end
@@ -154,14 +148,12 @@ defmodule ExTracker.UDP.Router do
     process_message(socket, ip, port, packet)
     finish = System.monotonic_time(:microsecond)
 
-    if ExTracker.debug_enabled() do
-      elapsed = finish - start
-      if elapsed < 1_000 do
-        Logger.info("#{name}: message processed in #{elapsed}µs")
-      else
-        ms = System.convert_time_unit(elapsed, :microsecond, :millisecond)
-        Logger.info("#{name} message processed in #{ms}ms")
-      end
+    elapsed = finish - start
+    if elapsed < 1_000 do
+      Logger.debug("#{name}: message processed in #{elapsed}µs")
+    else
+      ms = System.convert_time_unit(elapsed, :microsecond, :millisecond)
+      Logger.debug("#{name} message processed in #{ms}ms")
     end
     :ok
   end
