@@ -84,7 +84,8 @@ defmodule ExTracker.Processors.Announce do
 
   defp generate_peer_list(swarm, _client, peer_data, _event, request) do
     need_peer_data = !request.compact
-    desired_total = if request.numwant > 25 or request.numwant < 0, do: 25, else: request.numwant
+    max_peers = Application.get_env(:extracker, :max_peers_returned, 25)
+    desired_total = if request.numwant > max_peers or request.numwant < 0, do: max_peers, else: request.numwant
 
     peer_list = case peer_data.left do
       0 ->

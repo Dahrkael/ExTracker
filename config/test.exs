@@ -18,7 +18,8 @@ config :extracker,
   connection_id_secret: 87178291199,
   scrape_enabled: true,
   force_compact_peers: false,
-  return_external_ip: true
+  return_external_ip: true,
+  max_peers_returned: 25
 
 config :logger,
   level: :debug
