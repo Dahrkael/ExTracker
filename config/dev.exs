@@ -2,6 +2,8 @@ import Config
 
 config :extracker,
   debug: true,
+  compress_lookups: true,
+  named_lookups: true,
   bind_address_ip: {0,0,0,0},
   http_enabled: true,
   http_port: 6969,

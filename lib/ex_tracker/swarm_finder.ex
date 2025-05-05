@@ -1,4 +1,5 @@
 defmodule ExTracker.SwarmFinder do
+alias JasonV.Encode
 
   # ETS table to store the index for every swarm table containing the actual data
   @swarms_table_name :swarms
@@ -44,9 +45,18 @@ defmodule ExTracker.SwarmFinder do
   # Server (callbacks)
   #==========================================================================
 
+  defp get_ets_compression_arg() do
+    if Application.get_env(:extracker, :compress_lookups, true) do
+      [:compressed]
+    else
+      []
+    end
+  end
+
   @impl true
   def init(_args) do
-    :ets.new(@swarms_table_name, [:set, :named_table, :protected])
+    ets_args = [:set, :named_table, :protected] ++ get_ets_compression_arg()
+    :ets.new(@swarms_table_name, ets_args)
     {:ok, {}}
   end
 
@@ -68,16 +78,26 @@ defmodule ExTracker.SwarmFinder do
   # create a table for the new swarm if it doesnt already exist
   defp create_swarm_checked(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table}] -> table
+      [{^hash, table, _timestamp}] -> table
       _ -> create_swarm(hash)
     end
   end
 
   # create a table for the new swarm and index it
   defp create_swarm(hash) do
-    table = :ets.new(:swarm, [:set, :public])
+    # atom count has an upper limit so better make it optional for debug mostly
+    table_name = case Application.get_env(:extracker, :named_lookups, ExTracker.debug_enabled()) do
+      true -> :"swarm_#{hash |> Base.encode16() |> String.downcase()}"
+      false -> :swarm
+    end
+
+    ets_args = [:set, :public] ++ get_ets_compression_arg()
+    table = :ets.new(table_name, ets_args)
+
     timestamp = System.system_time(:millisecond)
     :ets.insert(@swarms_table_name, {hash, table, timestamp})
+
+    Logger.debug("created table #{inspect(table_name)} for hash #{hash |> Base.encode16() |> String.downcase()}")
     table
   end
 end
