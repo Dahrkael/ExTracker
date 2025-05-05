@@ -27,7 +27,22 @@ Implementation Legend:
 
 ### Non-BEP Features
 - 🔲 HTTPS support
+- 🔲 Database backups to disk
 - ❌ WebTorrent
 - 🔲 Infohash whitelist/blacklist
 - 🔲 Peer management (interval enforcement, banning, etc)
 - **Feel free to propose features in the [Issues](https://github.com/Dahrkael/ExTracker/issues)**
+
+## Interesting bit of Technical Information
+
+- Both the HTTP(S) and UDP frontends scale linearly with the number of cpu cores. The more the better!
+- Each swarm (torrent) is stored in-memory for fast access. Heres a table showing how much memory a swarm uses based on the number of peers registered in it:
+
+| Peer Count | Total Memory |
+|:-----------|:-------------|
+| 10         | 4.65 KB      |
+| 100        | 25.04 KB     |
+| 1000       | 246.99 KB    |
+| 10000      | 2.29 MB      |
+| 100000     | 22.90 MB     |
+| 1000000    | 228.90 MB    |
