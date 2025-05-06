@@ -1,6 +1,5 @@
 {
     "extracker": {
-      "http_port": 6969,
-      "debug": false
+      "connection_id_secret": 87178291199
     }
 }
