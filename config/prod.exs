@@ -20,6 +20,8 @@ config :extracker,
   force_compact_peers: true,
   return_external_ip: false,
   max_peers_returned: 25,
+  announce_interval: (60 * 5),
+  announce_interval_min: 60,
   cleaning_interval: 1_000,
   swarm_clean_delay: (60 * 1_000),
   peer_cleanup_delay: (60 * 60 * 1_000)

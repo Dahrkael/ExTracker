@@ -1,12 +1,10 @@
 defmodule ExTracker.Types.AnnounceResponse do
 
   def generate_success(peer_list, total_seeders, total_leechers) do
-    %{
+    response = %{
       #warning message: (new, optional) Similar to failure reason, but the response still gets processed normally. The warning message is shown just like an error.
       #interval: Interval in seconds that the client should wait between sending regular requests to the tracker.
-      "interval" => 60 * 5,
-      #min interval: (optional) Minimum announce interval. If present clients must not reannounce more frequently than this.
-      "min interval" => 60,
+      "interval" => Application.get_env(:extracker, :announce_interval),
       #tracker id: A string that the client should send back on its next announcements. If absent and a previous announce sent a tracker id, do not discard the old value; keep using it.
       #"tracker id" => "",
       #complete: number of peers with the entire file, i.e. seeders (integer)
@@ -21,6 +19,13 @@ defmodule ExTracker.Types.AnnounceResponse do
       "peers" => peer_list
     }
 
+    #min interval: (optional) Minimum announce interval. If present clients must not reannounce more frequently than this.
+    response = case Application.fetch_env(:extracker, :announce_interval_min) do
+      {:ok, value}-> Map.put(response, "min interval", value)
+      :error -> response
+    end
+
+    response
   end
 
   # BEP 24 'Tracker Returns External IP' extra field
