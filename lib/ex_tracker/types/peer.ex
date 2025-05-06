@@ -20,7 +20,8 @@ defmodule ExTracker.Types.PeerData do
     uploaded: 0,
     downloaded: 0,
     left: 0,
-    state: :fresh
+    state: :fresh,
+    last_updated: 0
   ]
 
   def set_id(peer_data, id) when byte_size(id) == 20 do
@@ -64,5 +65,9 @@ defmodule ExTracker.Types.PeerData do
   @spec update_state(peer_data :: PeerData, state :: peer_state()) :: PeerData
   def update_state(peer_data, state) do
     %PeerData{peer_data | state: state}
+  end
+
+  def update_last_updated(peer_data, timestamp) do
+    %PeerData{peer_data | last_updated: timestamp}
   end
 end

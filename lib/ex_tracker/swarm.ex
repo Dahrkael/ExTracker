@@ -13,7 +13,9 @@ defmodule ExTracker.Swarm do
   # add a new peer to the specified swarm
   @spec add_peer(swarm :: any(), id :: PeerID) :: {:ok, PeerData} | {:error, any()}
   def add_peer(swarm, id) do
-    data = %PeerData{}
+    data = %PeerData{
+      last_updated: System.system_time(:millisecond)
+    }
     peer = {id, data}
     case :ets.insert_new(swarm, peer) do
       true -> {:ok, data}
@@ -34,6 +36,10 @@ defmodule ExTracker.Swarm do
 
   @spec update_peer(swarm :: any(), id :: PeerID, data :: PeerData) :: {:ok, PeerData} | {:error, any()}
   def update_peer(swarm, id, data)  do
+    # reflect when was the last update
+    timestamp = System.system_time(:millisecond)
+    data = PeerData.update_last_updated(data, timestamp)
+
     if(find_peer(swarm, id)) do
       case :ets.insert(swarm, {id, data}) do
         true -> {:ok, data}
@@ -59,10 +65,16 @@ defmodule ExTracker.Swarm do
   end
 
   # return a list of all the peers registered in the swarm  up to 'count', optionally includes their associated data
-  def get_peers(swarm, :infinity, true), do: :ets.match(swarm, :"$1")
-  def get_peers(swarm, :infinity, false), do: :ets.match(swarm, {:"$1", :_})
-  def get_peers(swarm, count, true), do: :ets.match(swarm, :"$1", count)
-  def get_peers(swarm, count, false), do: :ets.match(swarm, {:"$1", :_}, count)
+  def get_peers(swarm, :infinity, true), do: :ets.match_object(swarm, :"$1")
+  def get_peers(swarm, :infinity, false), do: :ets.match_object(swarm, {:"$1", :_})
+  def get_peers(swarm, count, true), do: :ets.match_object(swarm, :"$1", count)
+  def get_peers(swarm, count, false), do: :ets.match_object(swarm, {:"$1", :_}, count)
+
+  def get_stale_peers(swarm, timestamp) do
+    #spec = :ets.fun2ms(fn {id, data} = peer when data.last_updated < timestamp -> peer end)
+    spec = [{{:"$1", :"$2"}, [{:<, {:map_get, :last_updated, :"$2"}, timestamp}], [:"$_"]}]
+    :ets.select(swarm, spec)
+  end
 
   def get_leechers(swarm, :infinity, true) do
     #spec = :ets.fun2ms(fn {id, data} = peer when data.left > 0 -> peer end)
