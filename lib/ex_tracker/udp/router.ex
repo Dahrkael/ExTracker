@@ -118,8 +118,21 @@ defmodule ExTracker.UDP.Router do
   defp match_connection_id(connection_id, ip, port) do
     <<t::integer-unsigned-8, _s::integer-unsigned-56>> = :binary.encode_unsigned(connection_id)
     case generate_connection_id(t, ip, port) do
-      ^connection_id -> :ok
+      ^connection_id ->
+        case expired_connection_id(t) do
+          true -> {:error, "connection id expired"}
+          false -> :ok
+        end
       _ -> {:error, "connection id mismatch"}
+    end
+  end
+
+  defp expired_connection_id(t) do
+    current_t = (System.monotonic_time(:second) >>> 6) &&& 0xFF
+    cond do
+      current_t < t -> true  # t overflowed already (edge case here)
+      current_t > (t + 1) -> true # t increased at least two times
+      true -> false
     end
   end
 
@@ -137,8 +150,8 @@ defmodule ExTracker.UDP.Router do
   end
 
   defp generate_connection_id(ip, port) do
-    # get the current monotonic time, reduce its resolution to 128 seconds and fit it in 8 bits
-    t = (System.monotonic_time(:second) >>> 7) |> rem(0xFF)
+    # get the current monotonic time, reduce its resolution to 64 seconds and fit it in 8 bits
+    t = (System.monotonic_time(:second) >>> 6) &&& 0xFF
     t = :binary.decode_unsigned(<<t::integer-unsigned-8>>)
     generate_connection_id(t, ip, port)
   end
