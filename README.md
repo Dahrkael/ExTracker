@@ -1,7 +1,7 @@
 # ExTracker
 The Bittorrent Tracker made in Elixir
 
-👷‍♂️This project is a Work In Progress and not ready for production usage
+👷‍♂️This project is a Work In Progress. While not ready for full industrial usage it does work
 
 ## Features
 Implementation Legend: 
