@@ -1,5 +1,9 @@
 defmodule ExTracker.Utils do
 
+  def hash_to_string(hash) do
+    String.downcase(Base.encode16(hash))
+  end
+
   def ipv4_to_bytes(ip) when is_tuple(ip) and tuple_size(ip) == 4 do
     ip |> Tuple.to_list() |> :binary.list_to_bin()
   end
