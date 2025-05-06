@@ -59,9 +59,9 @@ defmodule ExTracker.SwarmCleaner do
         Logger.debug("swarm cleaner found #{entry_count} swarms pending cleaning")
       end
 
-      # retrieve the peers inside every matching swarm
+      # retrieve the peers inside every matching swarm in parallel
       entries
-      |> Enum.each(fn entry ->
+      |> Task.async_stream(fn entry ->
         {hash, table, _created_at, _last_cleaned} = entry
         Swarm.get_stale_peers(table,  peer_timeout)
         |> (fn stale_peers ->
@@ -80,6 +80,7 @@ defmodule ExTracker.SwarmCleaner do
         # flag the swarm as clean
         SwarmFinder.mark_as_clean(hash)
       end)
+      |> Stream.run()
 
       schedule_clean()
       {:noreply, state}
