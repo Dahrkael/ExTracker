@@ -16,7 +16,8 @@ require Logger
     print_current_config()
 
     required_children = [
-      { ExTracker.SwarmFinder, {}}
+      { ExTracker.SwarmFinder, {}},
+      { ExTracker.SwarmCleaner, {}}
     ]
 
     optional_children = [] ++ get_http_children() ++ get_https_children() ++ get_udp_children()

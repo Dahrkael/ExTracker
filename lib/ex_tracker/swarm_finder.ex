@@ -1,11 +1,15 @@
+# ExTracker.SwarmFinder is the process responsible for keeping track of all the swarms (torrents) using ETS
+# tables are created and looked up here but the actual updates happen in ExTracker.Swarm
 defmodule ExTracker.SwarmFinder do
-alias JasonV.Encode
 
   # ETS table to store the index for every swarm table containing the actual data
   @swarms_table_name :swarms
+  def swarms_table_name, do: @swarms_table_name
 
   use GenServer
   require Logger
+
+  alias ExTracker.Utils
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: __MODULE__)
@@ -17,14 +21,21 @@ alias JasonV.Encode
 
   def find_or_create(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _timestamp}] -> table
+      [{^hash, table, _created_at, _last_cleaned}] -> table
       _ -> create(hash)
     end
   end
 
   def find(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _timestamp}] -> table
+      [{^hash, table, _created_at, _last_cleaned}] -> table
+      _ -> :error
+    end
+  end
+
+  def mark_as_clean(hash) do
+    case :ets.lookup(@swarms_table_name, hash) do
+      [{^hash, _table, _created_at, _last_cleaned}] -> clean(hash)
       _ -> :error
     end
   end
@@ -39,6 +50,10 @@ alias JasonV.Encode
 
   defp create(hash) do
     GenServer.call(__MODULE__, {:create, hash})
+  end
+
+  defp clean(hash) do
+    GenServer.cast(__MODULE__, {:clean, hash})
   end
 
   #==========================================================================
@@ -71,6 +86,16 @@ alias JasonV.Encode
   end
 
   @impl true
+  def handle_cast({:clean, hash}, state) do
+    timestamp = System.system_time(:millisecond)
+    case :ets.update_element(@swarms_table_name, hash, [{4, timestamp}]) do
+      true -> :ok
+      false -> Logger.debug("failed to mark entry #{Utils.hash_to_string(hash)} as clean")
+    end
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_info(_msg, state) do
     {:noreply, state}
   end
@@ -78,7 +103,7 @@ alias JasonV.Encode
   # create a table for the new swarm if it doesnt already exist
   defp create_swarm_checked(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _timestamp}] -> table
+      [{^hash, table, _created_at, _last_cleaned}] -> table
       _ -> create_swarm(hash)
     end
   end
@@ -95,7 +120,7 @@ alias JasonV.Encode
     table = :ets.new(table_name, ets_args)
 
     timestamp = System.system_time(:millisecond)
-    :ets.insert(@swarms_table_name, {hash, table, timestamp})
+    :ets.insert(@swarms_table_name, {hash, table, timestamp, timestamp})
 
     Logger.debug("created table #{inspect(table_name)} for hash #{hash |> Base.encode16() |> String.downcase()}")
     table

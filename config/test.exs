@@ -19,7 +19,10 @@ config :extracker,
   scrape_enabled: true,
   force_compact_peers: false,
   return_external_ip: true,
-  max_peers_returned: 25
+  max_peers_returned: 25,
+  cleaning_interval: 1_000,
+  swarm_clean_delay: (60 * 1_000),
+  peer_cleanup_delay: (60 * 60 * 1_000)
 
 config :logger,
   level: :debug

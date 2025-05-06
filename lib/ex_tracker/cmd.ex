@@ -33,7 +33,7 @@ defmodule ExTracker.Cmd do
   def show_swarm_total_memory() do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     memory = Enum.reduce(swarms, 0, fn swarm, acc ->
-      {hash, table, timestamp} = swarm
+      {_hash, table, _created_at, _last_cleaned} = swarm
       usage = (:ets.info(table, :memory) * :erlang.system_info(:wordsize))
       acc + usage
     end)
@@ -41,13 +41,13 @@ defmodule ExTracker.Cmd do
     :ok
   end
 
-  def show_pretty() do
+  def show_pretty_swarm_list() do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     data = Enum.map(swarms, fn swarm ->
       {hash, table, timestamp} = swarm
       created = DateTime.from_unix!(timestamp, :millisecond)
 
-      info = %{
+      %{
         "hash" => String.downcase(Base.encode16(hash)),
         "created" => DateTime.to_string(created),
         "total_memory" => (:ets.info(table, :memory) * :erlang.system_info(:wordsize)),
