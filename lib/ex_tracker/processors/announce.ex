@@ -1,6 +1,7 @@
 defmodule ExTracker.Processors.Announce do
 
   import ExTracker.Utils
+  require Logger
   alias ExTracker.Types.AnnounceResponse
   alias ExTracker.Types.AnnounceRequest
   alias ExTracker.Types.PeerID
@@ -14,24 +15,45 @@ defmodule ExTracker.Processors.Announce do
 
         with {:ok, event} <- process_event(request.event), # check event first as its the simplest
           {:ok, swarm} <- get_swarm(request.info_hash), # find swarm based on info_hash
+          :ok <- early_out_on_stopped(client, swarm, event), # stop processing right here if the peer stopped
           {:ok, peer_data} <- get_peer(swarm, client), # retrieve or create peer data
+          :ok <- check_announce_interval(client, peer_data), # is the peer respecting the provided intervals?
           {:ok, peer_data} <- update_stats(swarm, client, peer_data, request), # update peer stats
           {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request), # generate peer list
           {:ok, totals} <- get_total_peers(swarm) # get number of seeders and leechers for this swarm
         do
           generate_success_response(peer_list, totals, source_ip)
         else
-          {:error, error} -> generate_failure_response(error)
+          {:error, error} ->
+            Logger.warning("peer #{client} received an error: #{error}")
+            generate_failure_response(error)
           _ -> {:error, "unknown internal error"}
         end
       {:error, error} ->
+        Logger.warning("peer #{inspect(source_ip)} sent an invalid announce: #{error}")
         generate_failure_response(error)
+    end
+  end
+
+  defp process_event(event) do
+    case event do
+      :invalid -> {:error, "invalid event"}
+      _ -> {:ok, event}
     end
   end
 
   defp get_swarm(hash) do
     swarm = ExTracker.SwarmFinder.find_or_create(hash)
     {:ok, swarm}
+  end
+
+  defp early_out_on_stopped(client, swarm, event) do
+    # the peer is not coming back so just remove it and exit, it doesnt need peers
+    if event == :stopped do
+      ExTracker.Swarm.remove_peer(swarm, client)
+      exit(:normal)
+    end
+    :ok
   end
 
   defp get_peer(swarm, client) do
@@ -46,10 +68,18 @@ defmodule ExTracker.Processors.Announce do
     end
   end
 
-  defp process_event(event) do
-    case event do
-      :invalid -> {:error, "invalid event"}
-      _ -> {:ok, event}
+  defp check_announce_interval(client, peer_data) do
+    now = System.system_time(:millisecond)
+    elapsed = now - peer_data.last_updated
+    cond do
+      elapsed < (Application.get_env(:extracker, :announce_interval_min) * 1000) ->
+        {:error, "didn't respect minimal announcement interval"}
+      elapsed < (Application.get_env(:extracker, :announce_interval) * 1000) ->
+        Logger.warning("peer #{client} is announcing too soon (#{elapsed / 1000} seconds since last time)")
+        # TODO should we take an automatic action in this case?
+        :ok
+      true ->
+        :ok
     end
   end
 
@@ -61,7 +91,7 @@ defmodule ExTracker.Processors.Announce do
       |> PeerData.update_downloaded(request.downloaded)
       |> PeerData.update_left(request.left)
 
-    # increase swarm downloads counter if 'left' reaches zero
+    # TODO increase swarm downloads counter if 'left' reaches zero
     if peer_data.left > 0 && request.left == 0 do
     end
 
@@ -74,9 +104,14 @@ defmodule ExTracker.Processors.Announce do
         :completed -> updated_data
       end
 
-    # update the peer info in the swarm
-    ExTracker.Swarm.update_peer(swarm, client, updated_data)
-    {:ok, updated_data}
+      if updated_data.state == :gone do
+        # remove the peer as it has abandoned the swarm
+        ExTracker.Swarm.remove_peer(swarm, client)
+      else
+        # update the peer info in the swarm
+        ExTracker.Swarm.update_peer(swarm, client, updated_data)
+      end
+      {:ok, updated_data}
   end
 
   # the stopped event mean the peer is done with the torrent so it doesn't need more peers
