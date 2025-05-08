@@ -9,6 +9,13 @@ defmodule ExTracker.Types.PeerID do
   end
 end
 
+defimpl String.Chars, for: ExTracker.Types.PeerID do
+  def to_string(%ExTracker.Types.PeerID{ip: ip, port: port}) do
+    ip_str = ip |> Tuple.to_list() |> Enum.join(".")
+    "#{ip_str}:#{port}"
+  end
+end
+
 defmodule ExTracker.Types.PeerData do
   alias ExTracker.Types.PeerData
 
