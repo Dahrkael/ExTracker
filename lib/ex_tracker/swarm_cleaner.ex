@@ -50,13 +50,15 @@ defmodule ExTracker.SwarmCleaner do
       swarm_timeout = now - Application.get_env(:extracker, :swarm_clean_delay)
       peer_timeout = now - Application.get_env(:extracker, :peer_cleanup_delay)
 
+      start = System.monotonic_time(:millisecond)
       #spec = :ets.fun2ms(fn {hash, table, created_at, last_cleaned} = swarm when last_cleaned < tswarm_timeoutarget  -> swarm end)
       spec = [{{:"$1", :"$2", :"$3", :"$4"}, [{:<, :"$4", swarm_timeout}], [:"$_"]}]
       entries = :ets.select(SwarmFinder.swarms_table_name(), spec)
+      elapsed = System.monotonic_time(:millisecond) - start
 
       entry_count = length(entries)
       if (entry_count > 0) do
-        Logger.debug("swarm cleaner found #{entry_count} swarms pending cleaning")
+        Logger.debug("swarm cleaner found #{entry_count} swarms pending cleaning in #{elapsed}ms")
       end
 
       # retrieve the peers inside every matching swarm in parallel
