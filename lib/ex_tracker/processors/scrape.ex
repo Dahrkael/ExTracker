@@ -4,7 +4,7 @@ defmodule ExTracker.Processors.Scrape do
   alias ExTracker.Types.ScrapeRequest
 
   # entrypoint for client's "/scrape" requests
-  def process(source_ip, params) do
+  def process(_source_ip, params) do
     case ScrapeRequest.parse(params) do
       {:ok, request} ->
         with {:ok, swarm} <- get_swarm(request.info_hash), # find swarm based on info_hash
@@ -37,7 +37,7 @@ defmodule ExTracker.Processors.Scrape do
     {:ok, ExTracker.Swarm.get_leecher_count(swarm)}
   end
 
-  def get_total_downloads(swarm) do
+  def get_total_downloads(_swarm) do
     {:ok, 0} #TODO
   end
 

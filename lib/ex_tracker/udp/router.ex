@@ -111,7 +111,7 @@ defmodule ExTracker.UDP.Router do
   end
 
   @impl true
-  def handle_info(msg, state) do
+  def handle_info(_msg, state) do
     {:noreply, state}
   end
 
