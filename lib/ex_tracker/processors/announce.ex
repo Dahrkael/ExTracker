@@ -69,17 +69,19 @@ defmodule ExTracker.Processors.Announce do
   end
 
   defp check_announce_interval(client, peer_data) do
-    now = System.system_time(:millisecond)
-    elapsed = now - peer_data.last_updated
-    cond do
-      elapsed < (Application.get_env(:extracker, :announce_interval_min) * 1000) ->
-        {:error, "didn't respect minimal announcement interval"}
-      elapsed < (Application.get_env(:extracker, :announce_interval) * 1000) ->
-        Logger.warning("peer #{client} is announcing too soon (#{elapsed / 1000} seconds since last time)")
-        # TODO should we take an automatic action in this case?
-        :ok
-      true ->
-        :ok
+    if peer_data.state != :fresh do
+      now = System.system_time(:millisecond)
+      elapsed = IO.inspect(now) - IO.inspect(peer_data.last_updated)
+      cond do
+        elapsed < (Application.get_env(:extracker, :announce_interval_min) * 1000) ->
+          {:error, "didn't respect minimal announcement interval"}
+        elapsed < (Application.get_env(:extracker, :announce_interval) * 1000) ->
+          Logger.warning("peer #{client} is announcing too soon (#{elapsed / 1000} seconds since last time)")
+          # TODO should we take an automatic action in this case?
+          :ok
+        true ->
+          :ok
+      end
     end
   end
 
@@ -101,7 +103,7 @@ defmodule ExTracker.Processors.Announce do
         :started -> PeerData.update_state(updated_data, :active)
         :stopped -> PeerData.update_state(updated_data, :gone)
         :updated -> PeerData.update_state(updated_data, :active)
-        :completed -> updated_data
+        :completed -> PeerData.update_state(updated_data, :active)
       end
 
       if updated_data.state == :gone do
