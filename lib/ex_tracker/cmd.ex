@@ -5,8 +5,8 @@ defmodule ExTracker.Cmd do
   def show_swarm_list(show_peers) do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     Enum.each(swarms, fn swarm ->
-      {hash, table, timestamp} = swarm
-      created = DateTime.from_unix!(timestamp, :millisecond)
+      {hash, table, created_at, last_cleaned} = swarm
+      created = DateTime.from_unix!(created_at, :millisecond)
 
       info = %{
         "hash" => String.downcase(Base.encode16(hash)),
@@ -44,8 +44,8 @@ defmodule ExTracker.Cmd do
   def show_pretty_swarm_list() do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     data = Enum.map(swarms, fn swarm ->
-      {hash, table, timestamp} = swarm
-      created = DateTime.from_unix!(timestamp, :millisecond)
+      {hash, table, created_at, last_cleaned} = swarm
+      created = DateTime.from_unix!(created_at, :millisecond)
 
       %{
         "hash" => String.downcase(Base.encode16(hash)),
@@ -87,7 +87,7 @@ defmodule ExTracker.Cmd do
   def show_peer_count() do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
-      {_hash, table, _timestamp} = swarm
+      {hash, table, _created_at, _last_cleaned} = swarm
       total + ExTracker.Swarm.get_peer_count(table)
     end)
     IO.inspect(seeder_total, label: "Total peers")
@@ -97,7 +97,7 @@ defmodule ExTracker.Cmd do
   def show_leecher_count() do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
-      {_hash, table, _timestamp} = swarm
+      {_hash, table, _created_at, _last_cleaned} = swarm
       total + (ExTracker.Swarm.get_leechers(table, :infinity, false) |> length())
     end)
     IO.inspect(seeder_total, label: "Total seeders")
@@ -107,7 +107,7 @@ defmodule ExTracker.Cmd do
   def show_seeder_count() do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
-      {_hash, table, _timestamp} = swarm
+      {_hash, table, _created_at, _last_cleaned} = swarm
       total + (ExTracker.Swarm.get_seeders(table, :infinity, false) |> length())
     end)
     IO.inspect(seeder_total, label: "Total seeders")
