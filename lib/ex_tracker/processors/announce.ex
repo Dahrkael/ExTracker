@@ -82,6 +82,8 @@ defmodule ExTracker.Processors.Announce do
         true ->
           :ok
       end
+    else
+      :ok
     end
   end
 
