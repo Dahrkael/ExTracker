@@ -268,9 +268,13 @@ defmodule ExTracker.UDP.Router do
       end
     else
       # general error
-      {:error, reason} -> [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]
+      {:error, %{"failure reason" => reason}} ->
+        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]
+      {:error, reason} ->
+        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]
       # hashes list is empty
-      [] -> [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, "no info_hash provided"]
+      [] ->
+        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, "no info_hash provided"]
     end
 
     # send a response in all (expected) cases
