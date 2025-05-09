@@ -285,7 +285,7 @@ defmodule ExTracker.UDP.Router do
   # scrape requests can hold up to 72 info hashes
   defp read_info_hashes(data) when is_binary(data), do: read_info_hash(data, [])
   defp read_info_hash(<<>>, acc), do: acc
-  defp read_info_hash(<<hash::binary-size(20), rest::binary>>, acc), do: read_info_hash(rest, [acc | hash])
+  defp read_info_hash(<<hash::binary-size(20), rest::binary>>, acc), do: read_info_hash(rest, [hash | acc])
 
   # read and convert announce message to a map
   defp read_announce(data) when is_binary(data) do
