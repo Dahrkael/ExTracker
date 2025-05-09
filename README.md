@@ -30,7 +30,7 @@ Implementation Legend:
 - 🔲 Database backups to disk
 - ❌ WebTorrent
 - 🔲 Infohash whitelist/blacklist
-- 🔲 Peer management (interval enforcement, banning, etc)
+- 🔰 Peer management (interval enforcement, banning, etc)
 - **Feel free to propose features in the [Issues](https://github.com/Dahrkael/ExTracker/issues)**
 
 ## Interesting bit of Technical Information
