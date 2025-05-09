@@ -44,7 +44,9 @@ defmodule ExTracker.Types.AnnounceRequest do
       {:ok, info_hash} ->
         case ExTracker.Utils.validate_hash(info_hash) do
           {:ok, decoded_hash} -> {:ok, decoded_hash}
-          {:error, error} -> {:error, "invalid 'info_hash' parameter: #{error}"}
+          {:error, error} ->
+            Logger.warning("invalid 'info_hash' parameter: size: #{byte_size(info_hash)} value: #{inspect(info_hash)}")
+            {:error, "invalid 'info_hash' parameter: #{error}"}
         end
       :error -> {:error, "missing 'info_hash' parameter"}
     end
