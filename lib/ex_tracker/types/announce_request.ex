@@ -159,7 +159,9 @@ defmodule ExTracker.Types.AnnounceRequest do
       {:ok, "stopped"} -> Map.put(request, :event, :stopped)
       {:ok, "completed"} -> Map.put(request, :event, :completed)
       {:ok, ""} -> Map.put(request, :event, :updated)
-      {:ok, _other} -> Map.put(request, :event, :invalid)
+      {:ok, other} ->
+        Logger.warning("invalid 'event' parameter: size: #{byte_size(other)} value: #{inspect(other)}")
+        Map.put(request, :event, :invalid)
       :error -> Map.put(request, :event, :updated)
     end
   end
