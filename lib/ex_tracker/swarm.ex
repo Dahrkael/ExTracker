@@ -14,7 +14,8 @@ defmodule ExTracker.Swarm do
   @spec add_peer(swarm :: any(), id :: PeerID) :: {:ok, PeerData} | {:error, any()}
   def add_peer(swarm, id) do
     data = %PeerData{
-      last_updated: System.system_time(:millisecond)
+      # discount the interval time so the peer doesnt get throttled the first time
+      last_updated: System.system_time(:millisecond) - (Application.get_env(:extracker, :announce_interval_min, 0) + 1)
     }
     peer = {id, data}
     case :ets.insert_new(swarm, peer) do
