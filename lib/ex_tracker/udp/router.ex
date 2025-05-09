@@ -246,6 +246,8 @@ defmodule ExTracker.UDP.Router do
         {:error, _reason} -> true
         _ -> false
       end) do
+        {:error, %{"failure reason" => reason}} ->
+          [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]
         {:error, failure} ->
           [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, failure]
         nil ->
