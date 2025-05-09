@@ -54,7 +54,9 @@ defmodule ExTracker.Types.AnnounceRequest do
       {:ok, peer_id} ->
         case String.valid?(peer_id, :fast_ascii) do
           true when byte_size(peer_id) == 20 -> {:ok,peer_id}
-          _ -> {:error, "invalid 'peer_id' parameter"}
+          _ ->
+            Logger.warning("invalid 'peer_id' parameter: size: #{byte_size(peer_id)} value: #{inspect(peer_id)}")
+            {:error, "invalid 'peer_id' parameter"}
         end
       :error -> {:error, "missing 'peer_id' parameter"}
     end
