@@ -52,8 +52,8 @@ defmodule ExTracker.Types.AnnounceRequest do
   defp fetch_field_peer_id(params) do
     case Map.fetch(params, "peer_id") do
       {:ok, peer_id} ->
-        case String.valid?(peer_id, :fast_ascii) do
-          true when byte_size(peer_id) == 20 -> {:ok,peer_id}
+        case byte_size(peer_id) do
+          20 -> {:ok,peer_id}
           _ ->
             Logger.warning("invalid 'peer_id' parameter: size: #{byte_size(peer_id)} value: #{inspect(peer_id)}")
             {:error, "invalid 'peer_id' parameter"}
