@@ -1,5 +1,7 @@
 defmodule ExTracker.Types.AnnounceRequest do
 
+  require Logger
+
   def parse(params) do
     # mandatory fields
     with {:ok, info_hash} <- fetch_field_info_hash(params),
