@@ -256,7 +256,7 @@ defmodule ExTracker.UDP.Router do
               Map.fetch!(result, "completed")::integer-unsigned-32,
               Map.fetch!(result, "leechers")::integer-unsigned-32
             >>
-            [acc | binary]
+            [binary | acc]
           end)
 
           # concatenate the header and all the resulting binaries as response
