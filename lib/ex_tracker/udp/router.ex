@@ -1,8 +1,8 @@
 defmodule ExTracker.UDP.Router do
   require Logger
   use GenServer
-
   import Bitwise
+  alias ExTracker.Utils
 
   @protocol_magic   0x41727101980
   @action_connect   0
@@ -116,7 +116,7 @@ defmodule ExTracker.UDP.Router do
   end
 
   defp match_connection_id(connection_id, ip, port) do
-    <<t::integer-unsigned-8, _s::integer-unsigned-56>> = :binary.encode_unsigned(connection_id)
+    <<t::integer-unsigned-8, _s::integer-unsigned-56>> = Utils.pad_to_8_bytes(:binary.encode_unsigned(connection_id))
     case generate_connection_id(t, ip, port) do
       ^connection_id ->
         case expired_connection_id(t) do
