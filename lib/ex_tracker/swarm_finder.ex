@@ -40,6 +40,13 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
+  def restore_creation_timestamp(hash, timestamp) do
+    case :ets.lookup(@swarms_table_name, hash) do
+      [{^hash, _table, _created_at, _last_cleaned}] -> restore(hash, timestamp)
+      _ -> :error
+    end
+  end
+
   def get_swarm_list() do
     :ets.tab2list(@swarms_table_name)
   end
@@ -54,6 +61,10 @@ defmodule ExTracker.SwarmFinder do
 
   defp clean(hash) do
     GenServer.cast(__MODULE__, {:clean, hash})
+  end
+
+  defp restore(hash, created_at) do
+    GenServer.cast(__MODULE__, {:restore, hash, created_at})
   end
 
   #==========================================================================
@@ -90,10 +101,21 @@ defmodule ExTracker.SwarmFinder do
     timestamp = System.system_time(:millisecond)
     case :ets.update_element(@swarms_table_name, hash, [{4, timestamp}]) do
       true -> :ok
-      false -> Logger.debug("failed to mark entry #{Utils.hash_to_string(hash)} as clean")
+      false -> Logger.warning("failed to mark entry #{Utils.hash_to_string(hash)} as clean")
     end
     {:noreply, state}
   end
+
+  @impl true
+  def handle_cast({:restore, hash, created_at}, state) do
+    case :ets.update_element(@swarms_table_name, hash, [{3, created_at}]) do
+      true -> :ok
+      false -> Logger.warning("failed to updated creation time for entry #{Utils.hash_to_string(hash)}")
+    end
+    {:noreply, state}
+  end
+
+
 
   @impl true
   def handle_info(_msg, state) do
