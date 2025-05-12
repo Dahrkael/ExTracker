@@ -229,7 +229,9 @@ defmodule ExTracker.UDP.Router do
 
   # scrape request
   defp process_message(socket, ip, port, <<connection_id::integer-unsigned-64, @action_scrape::integer-unsigned-32, transaction_id::integer-unsigned-32, data::binary>>) do
-    response = with :ok <- match_connection_id(connection_id, ip, port), # check connection id first
+    response =
+      with :ok <- check_scrape_enabled(),
+      :ok <- match_connection_id(connection_id, ip, port), # check connection id first
       hashes when hashes != 0 <- read_info_hashes(data) # then extract the hashes and make sure theres at least one
     do
       # TODO using recursion i can probably return early if any of them fail for whatever reason
@@ -286,6 +288,13 @@ defmodule ExTracker.UDP.Router do
 
   # unexpected request
   defp process_message(_socket, _ip, _port, _data) do
+  end
+
+  defp check_scrape_enabled() do
+    case Application.get_env(:extracker, :scrape_enabled) do
+      true -> :ok
+      _ -> {:error, "scraping is disabled"}
+    end
   end
 
   # scrape requests can hold up to 72 info hashes
