@@ -33,6 +33,13 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
+  def remove(hash) do
+    case :ets.lookup(@swarms_table_name, hash) do
+      [{^hash, _table, _created_at, _last_cleaned}] -> destroy(hash)
+      _ -> :error
+    end
+  end
+
   def mark_as_clean(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
       [{^hash, _table, _created_at, _last_cleaned}] -> clean(hash)
@@ -57,6 +64,10 @@ defmodule ExTracker.SwarmFinder do
 
   defp create(hash) do
     GenServer.call(__MODULE__, {:create, hash})
+  end
+
+  defp destroy(hash) do
+    GenServer.cast(__MODULE__, {:destroy, hash})
   end
 
   defp clean(hash) do
@@ -94,6 +105,12 @@ defmodule ExTracker.SwarmFinder do
   def handle_call({:create, hash}, _from, state) do
     table = create_swarm_checked(hash)
     {:reply, table, state}
+  end
+
+  @impl true
+  def handle_cast({:destroy, hash}, state) do
+    destroy_swarm(hash)
+    {:noreply, state}
   end
 
   @impl true
@@ -146,5 +163,18 @@ defmodule ExTracker.SwarmFinder do
 
     Logger.debug("created table #{inspect(table_name)} for hash #{hash |> Base.encode16() |> String.downcase()}")
     table
+  end
+
+  defp destroy_swarm(hash) do
+    case :ets.lookup(@swarms_table_name, hash) do
+      [{^hash, table, _created_at, _last_cleaned}] ->
+        # delete the index entry
+        :ets.delete(@swarms_table_name, hash)
+        # delete the swarm table
+        :ets.delete(table)
+
+        Logger.debug("destroyed swarm for hash #{hash |> Base.encode16() |> String.downcase()}")
+      _ -> :notfound
+    end
   end
 end
