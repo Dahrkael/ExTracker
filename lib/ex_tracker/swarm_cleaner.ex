@@ -51,7 +51,7 @@ defmodule ExTracker.SwarmCleaner do
       peer_timeout = now - Application.get_env(:extracker, :peer_cleanup_delay)
 
       start = System.monotonic_time(:millisecond)
-      #spec = :ets.fun2ms(fn {hash, table, created_at, last_cleaned} = swarm when last_cleaned < tswarm_timeoutarget  -> swarm end)
+      #spec = :ets.fun2ms(fn {hash, table, created_at, last_cleaned} = swarm when last_cleaned < swarm_timeout  -> swarm end)
       spec = [{{:"$1", :"$2", :"$3", :"$4"}, [{:<, :"$4", swarm_timeout}], [:"$_"]}]
       entries = :ets.select(SwarmFinder.swarms_table_name(), spec)
       elapsed = System.monotonic_time(:millisecond) - start
@@ -79,8 +79,16 @@ defmodule ExTracker.SwarmCleaner do
           Swarm.remove_peer(table, id)
         end)
 
-        # flag the swarm as clean
-        SwarmFinder.mark_as_clean(hash)
+        case Swarm.get_peer_count(table) do
+          0 ->
+            # empty swarms are deleted right away
+            SwarmFinder.remove(hash)
+          _ ->
+            # flag the swarm as clean
+            SwarmFinder.mark_as_clean(hash)
+        end
+
+
       end)
       |> Stream.run()
 
