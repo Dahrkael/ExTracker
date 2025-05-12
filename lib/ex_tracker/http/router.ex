@@ -26,12 +26,20 @@ defmodule ExTracker.HTTP.Router do
   end
 
   get "/scrape" do
-    # TODO scrapes are supposed to allow multiple 'info_hash' keys to be present to scrape more than one torrent at a time
-    # but apparently the standard requires those keys to have '[]' appended to be treated as a list, otherwise they get overwritten
-    # this probably needs a custom query_string parser at the router level
-    {_status, result} = ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
+    response =
+      case Application.get_env(:extracker, :scrape_enabled) do
+        true ->
+          # TODO scrapes are supposed to allow multiple 'info_hash' keys to be present to scrape more than one torrent at a time
+          # but apparently the standard requires those keys to have '[]' appended to be treated as a list, otherwise they get overwritten
+          # this probably needs a custom query_string parser at the router level
+          {_status, result} = ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
+          result
+      _ ->
+        %{"failure reason" => "scraping is disabled"}
+    end
+
     # bencoded response
-    response = result |> Benx.encode() |> IO.iodata_to_binary()
+    response = response |> Benx.encode() |> IO.iodata_to_binary()
 
     conn
     |> put_resp_content_type("application/octet-stream", nil)
