@@ -86,21 +86,21 @@ defmodule ExTracker.Cmd do
 
   def show_peer_count() do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
-    seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
+    peer_total = Enum.reduce(swarms, 0, fn swarm, total ->
       {_hash, table, _created_at, _last_cleaned} = swarm
       total + ExTracker.Swarm.get_peer_count(table)
     end)
-    IO.inspect(seeder_total, label: "Total peers")
+    IO.inspect(peer_total, label: "Total peers")
     :ok
   end
 
   def show_leecher_count() do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
-    seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
+    leecher_total = Enum.reduce(swarms, 0, fn swarm, total ->
       {_hash, table, _created_at, _last_cleaned} = swarm
       total + (ExTracker.Swarm.get_leechers(table, :infinity, false) |> length())
     end)
-    IO.inspect(seeder_total, label: "Total seeders")
+    IO.inspect(leecher_total, label: "Total leechers")
     :ok
   end
 
