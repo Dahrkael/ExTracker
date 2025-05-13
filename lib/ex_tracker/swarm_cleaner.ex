@@ -97,6 +97,18 @@ defmodule ExTracker.SwarmCleaner do
     end
 
     @impl true
+    def handle_cast({:clean, hash}, state) do
+      # TODO
+      {:noreply, state}
+    end
+
+    @impl true
+    def handle_cast(:clean_all, state) do
+      # TODO
+      {:noreply, state}
+    end
+
+    @impl true
     def handle_info(_msg, state) do
       {:noreply, state}
     end
