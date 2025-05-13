@@ -30,7 +30,7 @@ Implementation Legend:
 
 ### Non-BEP Features
 - 🔲 HTTPS support
-- 🔰 Database backups to disk
+- ✅ Database backups to disk
 - ❌ WebTorrent
 - 🔲 Infohash whitelist/blacklist
 - 🔰 Peer management (interval enforcement, banning, etc)
