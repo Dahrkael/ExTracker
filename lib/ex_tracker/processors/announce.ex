@@ -24,12 +24,12 @@ defmodule ExTracker.Processors.Announce do
           generate_success_response(peer_list, totals, source_ip)
         else
           {:error, error} ->
-            Logger.warning("peer #{client} received an error: #{error}")
+            Logger.info("peer #{client} received an error: #{error}")
             generate_failure_response(error)
           _ -> {:error, "unknown internal error"}
         end
       {:error, error} ->
-        Logger.warning("peer #{inspect(source_ip)} sent an invalid announce: #{error}")
+        Logger.info("peer #{inspect(source_ip)} sent an invalid announce: #{error}")
         generate_failure_response(error)
     end
   end
@@ -67,7 +67,7 @@ defmodule ExTracker.Processors.Announce do
         elapsed < (Application.get_env(:extracker, :announce_interval_min) * 1000) ->
           {:error, "didn't respect minimal announcement interval"}
         elapsed < (Application.get_env(:extracker, :announce_interval) * 1000) ->
-          Logger.warning("peer #{client} is announcing too soon (#{elapsed / 1000} seconds since last time)")
+          Logger.info("peer #{client} is announcing too soon (#{elapsed / 1000} seconds since last time)")
           # TODO should we take an automatic action in this case?
           :ok
         true ->
