@@ -1,36 +1,115 @@
 defmodule ExTracker.Backup do
 
+  use GenServer
   require Logger
+
   alias ExTracker.SwarmFinder
 
-  # TODO measure how memory intense these operations actually are
-
-  def save(file_path) do
-    Logger.notice("creating backup into #{file_path}")
-    # retrieve all the existing swarms from the index
-    swarm_entries = :ets.tab2list(SwarmFinder.swarms_table_name())
-    # merge the actual swarm data (all the peers) with the index data
-    swarms_backup =
-      Enum.map(swarm_entries, fn {hash, table, created_at, _last_cleaned} ->
-        swarm_data = :ets.tab2list(table)
-        {hash, swarm_data, created_at}
-      end)
-
-      backup = %{
-      swarms: swarms_backup
-    }
-
-    File.write(file_path, :erlang.term_to_binary(backup))
-
-    ExTracker.Cmd.show_peer_count()
-    ExTracker.Cmd.show_swarm_count()
-    Logger.notice("backup created")
+  def start_link(args) do
+    GenServer.start_link(__MODULE__, args, name: __MODULE__)
   end
 
-  def load(file_path) do
+  #==========================================================================
+  # Client
+  #==========================================================================
+
+  def make(path) do
+    GenServer.cast(__MODULE__, {:make, path})
+  end
+
+  def restore(path) do
+    GenServer.cast(__MODULE__, {:restore, path})
+  end
+
+  #==========================================================================
+  # Server (callbacks)
+  #==========================================================================
+
+  @impl true
+  def init(_args) do
+    if Application.get_env(:extracker, :backup_auto_load_on_startup) do
+      Application.get_env(:extracker, :backup_auto_path) |> restore()
+    end
+
+    schedule_backup()
+    {:ok, {}}
+  end
+
+  @impl true
+    def terminate(_reason, _state) do
+  end
+
+  defp schedule_backup() do
+    Process.send_after(self(), :auto, Application.get_env(:extracker, :backup_auto_interval))
+  end
+
+  @impl true
+  def handle_info(:auto, state) do
+    if Application.get_env(:extracker, :backup_auto_enabled) do
+      Logger.notice("auto backup triggered")
+      Application.get_env(:extracker, :backup_auto_path) |> save()
+    end
+
+    # schedule the backup even if its disabled right now as it may be activated on runtime
+    schedule_backup()
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_cast({:make, path}, state) do
+    save(path)
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_cast({:restore, path}, state) do
+    load(path)
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(_msg, state) do
+    {:noreply, state}
+  end
+
+
+  defp save(file_path) do
+    case create_path(file_path) do
+      :ok ->
+        Logger.notice("creating backup in #{file_path}")
+        # retrieve all the existing swarms from the index
+        swarm_entries = :ets.tab2list(SwarmFinder.swarms_table_name())
+        # merge the actual swarm data (all the peers) with the index data
+        swarms_backup = swarm_entries
+          |> Task.async_stream(fn {hash, table, created_at, _last_cleaned} ->
+            swarm_data = :ets.tab2list(table)
+            {hash, swarm_data, created_at}
+          end)
+          |> Enum.map(&elem(&1, 1))
+
+          backup = %{
+          swarms: swarms_backup
+        }
+
+        File.write(file_path, :erlang.term_to_binary(backup))
+
+        if Application.get_env(:extracker, :backup_display_stats) do
+          ExTracker.Cmd.show_peer_count()
+          ExTracker.Cmd.show_swarm_count()
+        end
+
+        Logger.notice("backup created")
+      :error ->
+        Logger.error("backup failed")
+    end
+  end
+
+  defp load(file_path) do
     Logger.notice("restoring backup from #{file_path}")
-    ExTracker.Cmd.show_peer_count()
-    ExTracker.Cmd.show_swarm_count()
+    if Application.get_env(:extracker, :backup_display_stats) do
+      ExTracker.Cmd.show_peer_count()
+      ExTracker.Cmd.show_swarm_count()
+    end
 
     backup =
       case File.read(file_path) do
@@ -43,7 +122,8 @@ defmodule ExTracker.Backup do
 
     case Map.fetch(backup, :swarms) do
       {:ok, swarms} ->
-        Enum.each(swarms, fn {hash, swarm_data, created_at} ->
+        swarms
+        |> Task.async_stream(fn {hash, swarm_data, created_at} ->
           # recreate the swarm table
           swarm = SwarmFinder.find_or_create(hash)
           # put the correct creation date
@@ -51,13 +131,30 @@ defmodule ExTracker.Backup do
           # insert all the missing peers
           Enum.each(swarm_data, fn peer -> :ets.insert_new(swarm, peer) end)
         end)
+        |> Stream.run()
+
+        Logger.notice("backup restored")
+        if Application.get_env(:extracker, :backup_display_stats) do
+          ExTracker.Cmd.show_peer_count()
+          ExTracker.Cmd.show_swarm_count()
+        end
       :error -> :ok
     end
-
-    Logger.notice("backup restored")
-    ExTracker.Cmd.show_swarm_count()
-    ExTracker.Cmd.show_peer_count()
-
     :ok
+  end
+
+  # default path is gonna be the user's home directory
+  defp create_path(path) do
+    folder = case Path.split(path) do
+      [_filename] -> Path.expand("~")
+      parts -> Path.join(Enum.drop(parts, -1))
+    end
+
+    case File.mkdir_p(folder) do
+      :ok -> :ok
+      {:error, reason} ->
+        Logger.error("error creating backup folder '#{folder}': #{inspect(reason)}")
+        :error
+    end
   end
 end
