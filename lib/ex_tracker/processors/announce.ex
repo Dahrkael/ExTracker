@@ -110,7 +110,12 @@ defmodule ExTracker.Processors.Announce do
   end
 
   # the stopped event mean the peer is done with the torrent so it doesn't need more peers
-  defp generate_peer_list(_swarm, _client, _peer_data, :stopped, _request), do: {:ok, []}
+  defp generate_peer_list(_swarm, _client, _peer_data, :stopped, request) do
+    case request.compact do
+      true -> {:ok, IO.iodata_to_binary([])}
+      false -> {:ok, []}
+    end
+  end
 
   defp generate_peer_list(swarm, _client, peer_data, _event, request) do
     need_peer_data = !request.compact
