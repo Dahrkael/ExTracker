@@ -158,6 +158,7 @@ defmodule ExTracker.Types.AnnounceRequest do
       {:ok, "started"} -> Map.put(request, :event, :started)
       {:ok, "stopped"} -> Map.put(request, :event, :stopped)
       {:ok, "completed"} -> Map.put(request, :event, :completed)
+      {:ok, "unknown"} -> Map.put(request, :event, :updated) # this one is annoying in the wild
       {:ok, ""} -> Map.put(request, :event, :updated)
       {:ok, other} ->
         Logger.warning("invalid 'event' parameter: size: #{byte_size(other)} value: #{inspect(other)}")
