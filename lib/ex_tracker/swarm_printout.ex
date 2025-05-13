@@ -21,11 +21,10 @@ defmodule SwarmPrintout do
   end
 
   def print_table(swarms) when is_list(swarms) do
-    sorted = Enum.sort_by(swarms, fn swarm -> swarm["peer_count"] end)
     header = ["Created", "Hash", "Peer Count", "Total Memory"]
 
     rows =
-      Enum.map(sorted, fn swarm ->
+      Enum.map(swarms, fn swarm ->
         created = swarm["created"]
         hash = swarm["hash"]
         peer_count = Integer.to_string(swarm["peer_count"])

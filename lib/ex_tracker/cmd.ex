@@ -29,7 +29,7 @@ defmodule ExTracker.Cmd do
       ExTracker.SwarmFinder.get_swarm_list()
       |> Enum.sort_by(fn {_hash, table, _created_at, _last_cleaned} ->
         ExTracker.Swarm.get_peer_count(table)
-      end)
+      end, :desc)
       |> Enum.take(count)
 
     data = Enum.map(swarms, fn swarm ->
