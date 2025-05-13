@@ -24,6 +24,29 @@ defmodule ExTracker.Cmd do
     :ok
   end
 
+  def show_biggest_swarms(count) do
+    swarms =
+      ExTracker.SwarmFinder.get_swarm_list()
+      |> Enum.sort_by(fn {_hash, table, _created_at, _last_cleaned} ->
+        ExTracker.Swarm.get_peer_count(table)
+      end)
+      |> Enum.take(count)
+
+    data = Enum.map(swarms, fn swarm ->
+      {hash, table, created_at, _last_cleaned} = swarm
+      created = DateTime.from_unix!(created_at, :millisecond)
+
+      %{
+        "hash" => String.downcase(Base.encode16(hash)),
+        "created" => DateTime.to_string(created),
+        "total_memory" => (:ets.info(table, :memory) * :erlang.system_info(:wordsize)),
+        "peer_count" => ExTracker.Swarm.get_peer_count(table)
+      }
+    end)
+    SwarmPrintout.print_table(data)
+    :ok
+  end
+
   def show_swarm_count() do
     count = ExTracker.SwarmFinder.get_swarm_count()
     IO.inspect(count, label: "Registered swarm count")
