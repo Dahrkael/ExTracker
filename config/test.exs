@@ -24,7 +24,12 @@ config :extracker,
   announce_interval_min: 10,
   cleaning_interval: 1_000,
   swarm_clean_delay: (60 * 1_000),
-  peer_cleanup_delay: (60 * 60 * 1_000)
+  peer_cleanup_delay: (60 * 60 * 1_000),
+  backup_auto_enabled: false,
+  backup_auto_load_on_startup: false,
+  backup_auto_interval: 60_000,
+  backup_auto_path: "~/extracker.bck",
+  backup_display_stats: true
 
 config :logger,
   level: :debug
