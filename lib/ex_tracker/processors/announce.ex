@@ -15,7 +15,6 @@ defmodule ExTracker.Processors.Announce do
 
         with {:ok, event} <- process_event(request.event), # check event first as its the simplest
           {:ok, swarm} <- get_swarm(request.info_hash), # find swarm based on info_hash
-          :ok <- early_out_on_stopped(client, swarm, event), # stop processing right here if the peer stopped
           {:ok, peer_data} <- get_peer(swarm, client), # retrieve or create peer data
           :ok <- check_announce_interval(client, peer_data), # is the peer respecting the provided intervals?
           {:ok, peer_data} <- update_stats(swarm, client, peer_data, request), # update peer stats
@@ -45,15 +44,6 @@ defmodule ExTracker.Processors.Announce do
   defp get_swarm(hash) do
     swarm = ExTracker.SwarmFinder.find_or_create(hash)
     {:ok, swarm}
-  end
-
-  defp early_out_on_stopped(client, swarm, event) do
-    # the peer is not coming back so just remove it and exit, it doesnt need peers
-    if event == :stopped do
-      ExTracker.Swarm.remove_peer(swarm, client)
-      exit(:normal)
-    end
-    :ok
   end
 
   defp get_peer(swarm, client) do
