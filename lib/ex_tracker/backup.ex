@@ -73,6 +73,7 @@ defmodule ExTracker.Backup do
   end
 
   defp save(file_path) do
+    file_path = Path.expand(file_path)
     case create_path(file_path) do
       :ok ->
         Logger.notice("creating backup in #{file_path}")
@@ -104,6 +105,7 @@ defmodule ExTracker.Backup do
   end
 
   defp load(file_path) do
+    file_path = Path.expand(file_path)
     Logger.notice("restoring backup from #{file_path}")
     if Application.get_env(:extracker, :backup_display_stats) do
       ExTracker.Cmd.show_peer_count()
