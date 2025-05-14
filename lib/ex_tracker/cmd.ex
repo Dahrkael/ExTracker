@@ -25,25 +25,24 @@ defmodule ExTracker.Cmd do
   end
 
   def show_biggest_swarms(count) do
-    swarms =
-      ExTracker.SwarmFinder.get_swarm_list()
-      |> Enum.sort_by(fn {_hash, table, _created_at, _last_cleaned} ->
-        ExTracker.Swarm.get_peer_count(table)
-      end, :desc)
+    ExTracker.SwarmFinder.get_swarm_list()
+      |> Task.async_stream(fn {hash, table, created_at, _last_cleaned} ->
+        {hash, table, created_at, ExTracker.Swarm.get_peer_count(table)}
+      end)
+      |> Enum.map(&elem(&1, 1))
+      |> Enum.sort_by(&elem(&1, 3), :desc) # order by peer count
       |> Enum.take(count)
-
-    data = Enum.map(swarms, fn swarm ->
-      {hash, table, created_at, _last_cleaned} = swarm
-      created = DateTime.from_unix!(created_at, :millisecond)
-
-      %{
-        "hash" => String.downcase(Base.encode16(hash)),
-        "created" => DateTime.to_string(created),
-        "total_memory" => (:ets.info(table, :memory) * :erlang.system_info(:wordsize)),
-        "peer_count" => ExTracker.Swarm.get_peer_count(table)
-      }
-    end)
-    SwarmPrintout.print_table(data)
+      |> Task.async_stream(fn{hash, table, created_at, peer_count} ->
+        created = DateTime.from_unix!(created_at, :millisecond)
+        %{
+          "hash" => String.downcase(Base.encode16(hash)),
+          "created" => DateTime.to_string(created),
+          "total_memory" => (:ets.info(table, :memory) * :erlang.system_info(:wordsize)),
+          "peer_count" => peer_count
+        }
+      end)
+      |> Enum.map(&elem(&1, 1))
+      |> SwarmPrintout.print_table()
     :ok
   end
 
@@ -65,18 +64,20 @@ defmodule ExTracker.Cmd do
   end
 
   def show_pretty_swarm_list() do
-    swarms = ExTracker.SwarmFinder.get_swarm_list()
-    data = Enum.map(swarms, fn swarm ->
-      {hash, table, created_at, _last_cleaned} = swarm
-      created = DateTime.from_unix!(created_at, :millisecond)
+    data =
+      ExTracker.SwarmFinder.get_swarm_list()
+      |> Task.async_stream(fn swarm ->
+        {hash, table, created_at, _last_cleaned} = swarm
+        created = DateTime.from_unix!(created_at, :millisecond)
 
-      %{
-        "hash" => String.downcase(Base.encode16(hash)),
-        "created" => DateTime.to_string(created),
-        "total_memory" => (:ets.info(table, :memory) * :erlang.system_info(:wordsize)),
-        "peer_count" => ExTracker.Swarm.get_peer_count(table)
-      }
-    end)
+        %{
+          "hash" => String.downcase(Base.encode16(hash)),
+          "created" => DateTime.to_string(created),
+          "total_memory" => (:ets.info(table, :memory) * :erlang.system_info(:wordsize)),
+          "peer_count" => ExTracker.Swarm.get_peer_count(table)
+        }
+      |> Enum.map(&elem(&1, 1))
+      end)
     SwarmPrintout.print_table(data)
     :ok
 
@@ -108,32 +109,38 @@ defmodule ExTracker.Cmd do
   end
 
   def show_peer_count() do
-    swarms = ExTracker.SwarmFinder.get_swarm_list()
-    peer_total = Enum.reduce(swarms, 0, fn swarm, total ->
-      {_hash, table, _created_at, _last_cleaned} = swarm
-      total + ExTracker.Swarm.get_peer_count(table)
+    total = ExTracker.SwarmFinder.get_swarm_list()
+    |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
+      ExTracker.Swarm.get_peer_count(table)
     end)
-    IO.inspect(peer_total, label: "Total peers")
+    |> Stream.map(&elem(&1, 1))
+    |> Enum.sum()
+
+    IO.inspect(total, label: "Total peers")
     :ok
   end
 
   def show_leecher_count() do
-    swarms = ExTracker.SwarmFinder.get_swarm_list()
-    leecher_total = Enum.reduce(swarms, 0, fn swarm, total ->
-      {_hash, table, _created_at, _last_cleaned} = swarm
-      total + (ExTracker.Swarm.get_leechers(table, :infinity, false) |> length())
+    total = ExTracker.SwarmFinder.get_swarm_list()
+    |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
+      (ExTracker.Swarm.get_leechers(table, :infinity, false) |> length())
     end)
-    IO.inspect(leecher_total, label: "Total leechers")
+    |> Stream.map(&elem(&1, 1))
+    |> Enum.sum()
+
+    IO.inspect(total, label: "Total leechers")
     :ok
   end
 
   def show_seeder_count() do
-    swarms = ExTracker.SwarmFinder.get_swarm_list()
-    seeder_total = Enum.reduce(swarms, 0, fn swarm, total ->
-      {_hash, table, _created_at, _last_cleaned} = swarm
-      total + (ExTracker.Swarm.get_seeders(table, :infinity, false) |> length())
+    total = ExTracker.SwarmFinder.get_swarm_list()
+    |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
+      (ExTracker.Swarm.get_seeders(table, :infinity, false) |> length())
     end)
-    IO.inspect(seeder_total, label: "Total seeders")
+    |> Stream.map(&elem(&1, 1))
+    |> Enum.sum()
+
+    IO.inspect(total, label: "Total seeders")
     :ok
   end
 
