@@ -127,7 +127,7 @@ defmodule ExTracker.Cmd do
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
       ExTracker.Swarm.get_peer_count(table)
     end, ordered: false)
-    |> Stream.filter(&match?({:ok, _}, &1))
+    |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
@@ -140,7 +140,7 @@ defmodule ExTracker.Cmd do
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
       (ExTracker.Swarm.get_leechers(table, :infinity, false) |> length())
     end, ordered: false)
-    |> Stream.filter(&match?({:ok, _}, &1))
+    |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
@@ -153,7 +153,7 @@ defmodule ExTracker.Cmd do
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
       (ExTracker.Swarm.get_seeders(table, :infinity, false) |> length())
     end, ordered: false)
-    |> Stream.filter(&match?({:ok, _}, &1))
+    |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
