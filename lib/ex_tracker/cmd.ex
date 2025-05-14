@@ -2,6 +2,15 @@ defmodule ExTracker.Cmd do
   require Logger
   alias ExTracker.Types.PeerID
 
+  def shutdown() do
+    # make a back up before shutting down
+    if Application.get_env(:extracker, :backup_auto_enabled) do
+      Application.get_env(:extracker, :backup_auto_path) |> ExTracker.Backup.make_sync()
+    end
+
+    System.stop(0)
+  end
+
   def show_swarm_list(show_peers) do
     swarms = ExTracker.SwarmFinder.get_swarm_list()
     Enum.each(swarms, fn swarm ->

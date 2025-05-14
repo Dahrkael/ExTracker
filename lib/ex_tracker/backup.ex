@@ -17,6 +17,10 @@ defmodule ExTracker.Backup do
     GenServer.cast(__MODULE__, {:make, path})
   end
 
+  def make_sync(path) do
+    GenServer.call(__MODULE__, {:make, path})
+  end
+
   def restore(path) do
     GenServer.cast(__MODULE__, {:restore, path})
   end
@@ -36,7 +40,7 @@ defmodule ExTracker.Backup do
   end
 
   @impl true
-    def terminate(_reason, _state) do
+  def terminate(_reason, _state) do
   end
 
   defp schedule_backup() do
@@ -58,6 +62,12 @@ defmodule ExTracker.Backup do
   @impl true
   def handle_info(_msg, state) do
     {:noreply, state}
+  end
+
+  @impl true
+  def handle_call({:make, path}, _from, state) do
+    save(path)
+    {:reply, :ok, state}
   end
 
   @impl true
