@@ -37,7 +37,8 @@ defmodule ExTracker.Cmd do
     ExTracker.SwarmFinder.get_swarm_list()
       |> Task.async_stream(fn {hash, table, created_at, _last_cleaned} ->
         {hash, table, created_at, ExTracker.Swarm.get_peer_count(table)}
-      end)
+      end, ordered: false)
+      |> Stream.filter(&match?({:ok, _}, &1))
       |> Enum.map(&elem(&1, 1))
       |> Enum.sort_by(&elem(&1, 3), :desc) # order by peer count
       |> Enum.take(count)
@@ -49,7 +50,8 @@ defmodule ExTracker.Cmd do
           "total_memory" => (:ets.info(table, :memory) * :erlang.system_info(:wordsize)),
           "peer_count" => peer_count
         }
-      end)
+      end, ordered: false)
+      |> Stream.filter(&match?({:ok, _}, &1))
       |> Enum.map(&elem(&1, 1))
       |> SwarmPrintout.print_table()
     :ok
@@ -85,11 +87,13 @@ defmodule ExTracker.Cmd do
           "total_memory" => (:ets.info(table, :memory) * :erlang.system_info(:wordsize)),
           "peer_count" => ExTracker.Swarm.get_peer_count(table)
         }
+
+      end, ordered: false)
+      |> Stream.filter(&match?({:ok, _}, &1))
       |> Enum.map(&elem(&1, 1))
-      end)
+
     SwarmPrintout.print_table(data)
     :ok
-
   end
 
   def show_swarm_info(info_hash) do
@@ -121,7 +125,8 @@ defmodule ExTracker.Cmd do
     total = ExTracker.SwarmFinder.get_swarm_list()
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
       ExTracker.Swarm.get_peer_count(table)
-    end)
+    end, ordered: false)
+    |> Stream.filter(&match?({:ok, _}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
@@ -133,7 +138,8 @@ defmodule ExTracker.Cmd do
     total = ExTracker.SwarmFinder.get_swarm_list()
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
       (ExTracker.Swarm.get_leechers(table, :infinity, false) |> length())
-    end)
+    end, ordered: false)
+    |> Stream.filter(&match?({:ok, _}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
@@ -145,7 +151,8 @@ defmodule ExTracker.Cmd do
     total = ExTracker.SwarmFinder.get_swarm_list()
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
       (ExTracker.Swarm.get_seeders(table, :infinity, false) |> length())
-    end)
+    end, ordered: false)
+    |> Stream.filter(&match?({:ok, _}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
