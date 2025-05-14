@@ -56,6 +56,11 @@ defmodule ExTracker.Backup do
   end
 
   @impl true
+  def handle_info(_msg, state) do
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_cast({:make, path}, state) do
     save(path)
     {:noreply, state}
@@ -66,12 +71,6 @@ defmodule ExTracker.Backup do
     load(path)
     {:noreply, state}
   end
-
-  @impl true
-  def handle_info(_msg, state) do
-    {:noreply, state}
-  end
-
 
   defp save(file_path) do
     case create_path(file_path) do
