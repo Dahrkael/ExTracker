@@ -8,6 +8,7 @@ defmodule ExTracker.Cmd do
       Application.get_env(:extracker, :backup_auto_path) |> ExTracker.Backup.make_sync()
     end
 
+    Logger.critical("shutting down!")
     System.stop(0)
   end
 
