@@ -9,9 +9,9 @@ config :extracker,
   udp_enabled: true, # enable the UDP endpoint to fulfill client requests
   udp_port: 6969, # port usesd by the UDP endpoint if enabled
   udp_routers: -1, # amount of processes listening to UDP requests. -1 means one per VM scheduler
-  udp_recbuf_size: 512_000, # kernel receive buffer size for the UDP socket. -1 means the OS decides
-  udp_sndbuf_size: 512_000, # kernel send buffer size for the UDP socket. -1 means the OS decides
-  udp_buffer_size: 1_048_576, # buffer size for the UDP socket. -1 means the OS decides
+  udp_recbuf_size: -1, # kernel receive buffer size for the UDP socket. 512_000 is a good number, -1 means the OS decides
+  udp_sndbuf_size: -1, # kernel send buffer size for the UDP socket. 512_000 is a good number, -1 means the OS decides
+  udp_buffer_size: -1, # buffer size for the UDP socket. 1_048_576 is a good number, -1 means the OS decides
   connection_id_secret: 87178291199, # prime used as salt for connection id's generation
   scrape_enabled: false, # allow scrape requests on all enabled endpoints
   force_compact_peers: false, # always respond to HTTP(S) requests with a compact peer list
