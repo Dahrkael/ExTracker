@@ -7,10 +7,7 @@ require Logger
   use Application
 
   @impl true
-  def start(_type, args) do
-    # config is loaded from config.exs first then the command line can override whats needed here
-    ExTracker.CLIReader.read(args)
-
+  def start(_type, _args) do
     # print out the configuration to be sure what values are being used after reading everything
     IO.puts(ExTracker.console_about())
     print_current_config()
@@ -38,14 +35,14 @@ require Logger
           dispatch: dispatch()
         ])
 
-        Logger.info("HTTP mode enabled")
+        Logger.notice("HTTP mode enabled")
         #if Application.ensure_started(:ranch) do
         #  IO.inspect(:ranch.info(http_spec.id), label: "HTTP info")
         #end
 
         [http_spec]
       false ->
-        Logger.info("HTTP mode disabled")
+        Logger.notice("HTTP mode disabled")
         []
     end
   end
@@ -69,14 +66,14 @@ require Logger
           dispatch: dispatch()
         ])
 
-        Logger.info("HTTPS mode enabled")
+        Logger.notice("HTTPS mode enabled")
         #if Application.ensure_started(:ranch) do
         #  IO.inspect(:ranch.info(https_spec.id), label: "HTTPS info")
         #end
 
         [https_spec]
       false ->
-        Logger.info("HTTPS mode disabled")
+        Logger.notice("HTTPS mode disabled")
         []
     end
   end
@@ -89,7 +86,7 @@ require Logger
           n -> 1..n
         end
 
-        Logger.info("UDP mode enabled using #{Enum.count(n)} routers")
+        Logger.notice("UDP mode enabled using #{Enum.count(n)} routers")
 
         Enum.map(n, fn index ->
           Supervisor.child_spec(
@@ -98,7 +95,7 @@ require Logger
         end)
 
       false ->
-        Logger.info("UDP mode disabled")
+        Logger.notice("UDP mode disabled")
         []
     end
   end
