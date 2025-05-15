@@ -8,6 +8,9 @@ require Logger
 
   @impl true
   def start(_type, _args) do
+    # override the configuration with whatever environment variables are set
+    Extracker.Config.SystemEnvironment.load()
+
     # print out the configuration to be sure what values are being used after reading everything
     IO.puts(ExTracker.console_about())
     print_current_config()
