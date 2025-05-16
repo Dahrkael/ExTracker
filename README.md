@@ -5,6 +5,8 @@ The Bittorrent Tracker made in Elixir
 
 There is a testing instance running at **extracker.dahrkael.net:6969** with all current features enabled.
 
+[![CI](https://github.com/Dahrkael/ExTracker/actions/workflows/build-on-push.yml/badge.svg)](https://github.com/Dahrkael/ExTracker/actions/workflows/build-on-push.yml)
+
 ## Features
 Implementation Legend: 
 🔲 Not Yet 🔰 Partially ✅ Done ❌ Won't do
