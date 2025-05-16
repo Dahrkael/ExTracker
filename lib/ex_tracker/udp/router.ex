@@ -341,9 +341,12 @@ defmodule ExTracker.UDP.Router do
       num_want::integer-signed-32,
       # 16-bit integer  port
       port::integer-unsigned-16,
-      # remaining may be empty or BEP41
-      _rest::binary
+      # remaining may be empty or BEP41 options
+      remaining::binary
     >> = data
+
+    # read options if any after the standard announce data
+    options = read_options(remaining)
 
     # TODO should be able to use atoms directly
     event_str = case event do
@@ -365,7 +368,35 @@ defmodule ExTracker.UDP.Router do
       "key" => key,
       "numwant" => num_want,
       "port" => port,
-      "compact" => 1 # udp is always compact
+      "compact" => 1, # udp is always compact
+      "options" => options
     }
+  end
+
+  # read BEP41-defined variable-length options and return a map with them
+  defp read_options(data) when is_binary(data), do: read_option(data, %{})
+
+  defp read_option(<<>>, options), do: options
+  # EndOfOptions: <Option-Type 0x0>
+  # A special case option that has a fixed-length of one byte. It is not followed by a length field, or associated data.
+  # Option parsing continues until either the end of the packet is reached, or an EndOfOptions option is encountered.
+  defp read_option(<<0x00::integer-unsigned-8, _rest::binary>>, options), do: options
+
+  # NOP: <Option-Type 0x1>
+  # A special case option that has a fixed-length of one byte. It is not followed by a length field, or associated data.
+  # A NOP has no affect on option parsing. It is used only if optional padding is necessary in the future.
+  defp read_option(<<0x01::integer-unsigned-8, rest::binary>>, options), do: read_option(rest, options)
+
+  # URLData: <Option-Type 0x2>, <Length Byte>, <Variable-Length URL Data>
+  # A variable-length option, followed by a length byte and variable-length data.
+  # The data field contains the concatenated PATH and QUERY portion of the UDP tracker URL. If this option appears more than once, the data fields are concatenated.
+  # This allows clients to send PATH and QUERY strings that are longer than 255 bytes, chunked into blocks of no larger than 255 bytes.
+  defp read_option(<<0x02::integer-unsigned-8, length::integer-unsigned-8, rest::binary>>, options) do
+    <<url_data::binary-size(length), remaining::binary>> = rest
+    options = case Map.fetch(options, :urldata) do
+      :error -> Map.put(options, :urldata, url_data)
+      current -> Map.put(options, :urldata, current <> url_data)
+    end
+    read_option(remaining, options)
   end
 end
