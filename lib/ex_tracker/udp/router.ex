@@ -180,8 +180,13 @@ defmodule ExTracker.UDP.Router do
       generate_connection_id(ip, port)::integer-unsigned-64
     >>
 
-    #IO.inspect(response, label: "connect response")
-    :ok = :gen_udp.send(socket, ip, port, response)
+    case :gen_udp.send(socket, ip, port, response) do
+      :ok ->
+        :ok
+      {:error, reason} ->
+        Logger.error("[connect] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
+        :error
+    end
   end
 
   # announce request
@@ -223,8 +228,13 @@ defmodule ExTracker.UDP.Router do
     end
 
     # send a response in all (expected) cases
-    #IO.inspect(response, label: "announce response")
-    :ok = :gen_udp.send(socket, ip, port, response)
+    case :gen_udp.send(socket, ip, port, response) do
+      :ok ->
+        :ok
+      {:error, reason} ->
+        Logger.error("[announce] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
+        :error
+    end
   end
 
   # scrape request
@@ -282,8 +292,13 @@ defmodule ExTracker.UDP.Router do
     end
 
     # send a response in all (expected) cases
-    #IO.inspect(response, label: "scrape response")
-    :ok = :gen_udp.send(socket, ip, port, response)
+    case :gen_udp.send(socket, ip, port, response) do
+      :ok ->
+        :ok
+      {:error, reason} ->
+        Logger.error("[scrape] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
+        :error
+    end
   end
 
   # unexpected request
