@@ -391,12 +391,24 @@ defmodule ExTracker.UDP.Router do
   # A variable-length option, followed by a length byte and variable-length data.
   # The data field contains the concatenated PATH and QUERY portion of the UDP tracker URL. If this option appears more than once, the data fields are concatenated.
   # This allows clients to send PATH and QUERY strings that are longer than 255 bytes, chunked into blocks of no larger than 255 bytes.
-  defp read_option(<<0x02::integer-unsigned-8, length::integer-unsigned-8, rest::binary>>, options) do
+  defp read_option(<<0x02::integer-unsigned-8, length::integer-unsigned-8, rest::binary>>, options) when byte_size(rest) >= length do
     <<url_data::binary-size(length), remaining::binary>> = rest
     options = case Map.fetch(options, :urldata) do
       :error -> Map.put(options, :urldata, url_data)
       current -> Map.put(options, :urldata, current <> url_data)
     end
     read_option(remaining, options)
+  end
+
+  # unkonwn Option-Type with length, just skip it
+  defp read_option(<<unknown::integer-unsigned-8, length::integer-unsigned-8, rest::binary>>, options) when byte_size(rest) >= length do
+    <<data::binary-size(length), remaining::binary>> = rest
+    Logger.debug("udp announce unknown option: #{inspect(unknown)}. data: #{inspect(data)}")
+    read_option(remaining, options)
+  end
+
+  defp read_option(<<malformed::binary>>, options) do
+    Logger.warning("udp announce malformed option: #{inspect(malformed)}. options: #{inspect(options)}")
+    options
   end
 end
