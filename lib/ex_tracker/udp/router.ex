@@ -156,6 +156,11 @@ defmodule ExTracker.UDP.Router do
     generate_connection_id(t, ip, port)
   end
 
+  defp process_packet(name, _socket, ip, 0, _packet) do
+    Logger.debug("#{name}: message from #{inspect(ip)} ignored because source port is zero")
+    :ok
+  end
+
   defp process_packet(name, socket, ip, port, packet) do
     start = System.monotonic_time(:microsecond)
     process_message(socket, ip, port, packet)
@@ -166,7 +171,7 @@ defmodule ExTracker.UDP.Router do
       Logger.debug("#{name}: message processed in #{elapsed}µs")
     else
       ms = System.convert_time_unit(elapsed, :microsecond, :millisecond)
-      Logger.debug("#{name} message processed in #{ms}ms")
+      Logger.debug("#{name}: message processed in #{ms}ms")
     end
     :ok
   end
