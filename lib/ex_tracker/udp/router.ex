@@ -193,6 +193,7 @@ defmodule ExTracker.UDP.Router do
   defp process_message(socket, ip, port, <<connection_id::integer-unsigned-64, @action_announce::integer-unsigned-32, transaction_id::integer-unsigned-32, data::binary>>) do
     response = with :ok <- match_connection_id(connection_id, ip, port), # check connection id first
     params <- read_announce(data), # convert the binary fields to a map for the processor to understand
+    params <- handle_zero_port(params, port), # if port is zero, use the socket port
     {:ok, result} <- ExTracker.Processors.Announce.process(ip, params),
     {:ok, interval} <- Map.fetch(result, "interval"),
     {:ok, leechers} <- Map.fetch(result, "incomplete"),
@@ -371,6 +372,14 @@ defmodule ExTracker.UDP.Router do
       "compact" => 1, # udp is always compact
       "options" => options
     }
+  end
+
+  # https://stackoverflow.com/questions/32075418/bittorrent-peers-with-zero-ports
+  def handle_zero_port(params, port) do
+    case Map.get(params, "port", port) do
+      0 -> Map.put(params, "port", port)
+      _other -> params
+    end
   end
 
   # read BEP41-defined variable-length options and return a map with them
