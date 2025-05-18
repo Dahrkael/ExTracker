@@ -22,6 +22,22 @@ defmodule ExTracker.Utils do
     <<port::16>>
   end
 
+  def get_configured_ipv4() do
+    {:ok, address} =
+      Application.get_env(:extracker, :ipv4_bind_address)
+      |> to_charlist()
+      |> :inet.parse_ipv4_address()
+      address
+  end
+
+  def get_configured_ipv6() do
+    {:ok, address} =
+      Application.get_env(:extracker, :ipv6_bind_address)
+      |> to_charlist()
+      |> :inet.parse_ipv6_address()
+      address
+  end
+
   # v1 hex-string hash (40 bytes, SHA-1)
   def validate_hash(hash) when is_binary(hash) and byte_size(hash) == 40 do
     with true <- String.valid?(hash, :fast_ascii),
