@@ -23,13 +23,16 @@ defmodule ExTracker.UDP.Router do
     index = Keyword.get(args, :index, 0)
     name = Keyword.get(args, :name, __MODULE__)
     port = Keyword.get(args, :port, -1)
+    ipversion = Keyword.get(args, :ipversion, :ipv4)
 
     Process.put(:index, index)
     Process.put(:name, name)
+    Process.put(:ipversion, ipversion)
 
     # open the UDP socket in binary mode, active, and allow address (and if needed, port) reuse
-    case :gen_udp.open(port, [
-      :inet,
+    case :gen_udp.open(port,
+    set_ip_version()
+    ++ [
       :binary,
       active: :once,
       reuseaddr: true
@@ -39,7 +42,7 @@ defmodule ExTracker.UDP.Router do
     ++ set_reuseport()
     ) do
       {:ok, socket} ->
-        Logger.debug("#{Process.get(:name)} started on port #{port}")
+        Logger.info("#{Process.get(:name)} started in mode #{to_string(ipversion)}, on port #{port}")
 
         set_receive_buffer(socket)
         set_send_buffer(socket)
@@ -52,8 +55,24 @@ defmodule ExTracker.UDP.Router do
     end
   end
 
+  defp set_ip_version() do
+    case Process.get(:ipversion) do
+      :ipv4 -> [:inet]
+      :ipv6 -> [:inet6]
+      other ->
+        Logger.error("unknown ip version: #{inspect(other)}")
+        exit(:unknown_ipversion)
+    end
+  end
+
   defp set_binding_address() do
-    [ip: Application.get_env(:extracker, :bind_address_ipv4, {0,0,0,0})]
+    case Process.get(:ipversion) do
+      :ipv4 -> [ip: Utils.get_configured_ipv4()]
+      :ipv6 -> [ip: Utils.get_configured_ipv6(), ipv6_v6only: true]
+      other ->
+        Logger.error("unknown ip version: #{inspect(other)}")
+        exit(:unknown_ipversion)
+    end
   end
 
   defp set_reuseport() do
@@ -99,11 +118,10 @@ defmodule ExTracker.UDP.Router do
 
   @impl true
   def handle_info({:udp, socket, ip, port, data}, state) do
-    name = Process.get(:name)
     # delegate message handling to a Task under the associated supervisor
-    supervisor = Process.get(:index) |> ExTracker.UDP.Supervisor.get_task_supervisor_name()
+    supervisor = ExTracker.UDP.Supervisor.get_task_supervisor_name(Process.get(:index), Process.get(:ipversion))
     Task.Supervisor.start_child(supervisor, fn ->
-      process_packet(name, socket, ip, port, data)
+      process_packet(Process.get(:name), socket, ip, port, data)
     end)
 
     :inet.setopts(socket, active: :once)
