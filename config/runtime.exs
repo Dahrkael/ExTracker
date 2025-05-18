@@ -3,7 +3,10 @@ import Config
 if config_env() in [:prod] do
 
   config :extracker,
-    bind_address_ip: {0,0,0,0}, # IP to bind to. Use {0,0,0,0} to bind to all available interfaces
+    ipv4_enabled: true, # listen or not on IPv4
+    ipv4_bind_address: "0.0.0.0", # IP to bind to when IPv4 is enabled. "0.0.0.0" listens on every address
+    ipv6_enabled: true, # listen or not on IPv6
+    ipv6_bind_address: "::", # IP to bind to when IPv6 is enabled. "::" listens on every address
     http_enabled: true, # enable the HTTP endpoint to fulfill client requests
     http_port: 6969, # port used by the HTTP endpoint if enabled
     https_enabled: false, # enable the TLS endpoint to fulfill client requests
