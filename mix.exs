@@ -37,8 +37,7 @@ defmodule ExTracker.MixProject do
   defp deps do
     [
       { :plug_cowboy, "~> 2.6" },
-      #{ :benx, "~> 0.1.2" }
-      { :benx, github: "jschneider1207/benx", ref: "ab3ff74"},
+      {:bento, "~> 1.0"}
     ]
   end
 end
