@@ -15,8 +15,7 @@ defmodule ExTracker.HTTP.Router do
   get "/announce" do
     {_status, result} = ExTracker.Processors.Announce.process(conn.remote_ip, conn.query_params)
     # bencoded response
-    response = result |> Bento.encode!() |> IO.inspect() |> IO.iodata_to_binary()
-
+    response = result |> Benx.encode() |> IO.iodata_to_binary()
     conn
     |> put_resp_content_type("application/octet-stream", nil)
     #|> put_resp_content_type("text/plain", nil)
@@ -39,8 +38,7 @@ defmodule ExTracker.HTTP.Router do
     end
 
     # bencoded response
-    response = response |> Bento.encode!() |> IO.inspect() |> IO.iodata_to_binary()
-
+    response = response |> Benx.encode() |> IO.iodata_to_binary()
     conn
     |> put_resp_content_type("application/octet-stream", nil)
     #|> put_resp_content_type("text/plain", nil)
