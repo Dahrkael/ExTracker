@@ -1,7 +1,7 @@
 # ExTracker
 The Bittorrent Tracker made in Elixir
 
-👷‍♂️This project is a Work In Progress. While not ready for full industrial usage it does work.
+👷‍♂️This project is a Work In Progress. While not ready for full industrial usage it does work fairly well.
 
 There is a testing instance running at **extracker.dahrkael.net:6969** with all current features enabled.
 
@@ -20,7 +20,7 @@ Implementation Legend:
 - ✅ **BEP 23:** [Tracker Returns Compact Peer Lists](https://www.bittorrent.org/beps/bep_0023.html)
 - 🔲 **BEP 27:** [Private Torrents](https://www.bittorrent.org/beps/bep_0027.html)
 #### Draft BEPs
-- 🔲 **BEP 7:** [IPv6 Tracker Extension](https://www.bittorrent.org/beps/bep_0007.html)
+- ✅ **BEP 7:** [IPv6 Tracker Extension](https://www.bittorrent.org/beps/bep_0007.html)
 - 🔲 **BEP 21:** [Extension for partial seeds](https://www.bittorrent.org/beps/bep_0021.html)
 - ✅ **BEP 24:** [Tracker Returns External IP](https://www.bittorrent.org/beps/bep_0024.html)
 - 🔲 **BEP 31:** [Tracker Failure Retry Extension](https://www.bittorrent.org/beps/bep_0031.html)
@@ -31,7 +31,7 @@ Implementation Legend:
 - ❌ **BEP 8:** [Tracker Peer Obfuscation](https://www.bittorrent.org/beps/bep_0008.html)
 
 ### Non-BEP Features
-- 🔲 HTTPS support
+- ✅ HTTPS support
 - ✅ Database backups to disk
 - ❌ WebTorrent
 - 🔲 Infohash whitelist/blacklist
