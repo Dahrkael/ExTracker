@@ -440,7 +440,7 @@ defmodule ExTracker.UDP.Router do
   end
 
   defp read_option(<<malformed::binary>>, options) do
-    Logger.warning("udp announce malformed option: #{inspect(malformed)}. options: #{inspect(options)}")
+    Logger.debug("udp announce malformed option: #{inspect(malformed)}. options: #{inspect(options)}")
     options
   end
 end
