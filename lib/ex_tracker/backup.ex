@@ -104,7 +104,7 @@ defmodule ExTracker.Backup do
         File.write(file_path, :erlang.term_to_binary(backup))
 
         if Application.get_env(:extracker, :backup_display_stats) do
-          ExTracker.Cmd.show_peer_count()
+          ExTracker.Cmd.show_peer_count(:all)
           ExTracker.Cmd.show_swarm_count()
         end
 
@@ -118,7 +118,7 @@ defmodule ExTracker.Backup do
     file_path = Path.expand(file_path)
     Logger.notice("restoring backup from #{file_path}")
     if Application.get_env(:extracker, :backup_display_stats) do
-      ExTracker.Cmd.show_peer_count()
+      ExTracker.Cmd.show_peer_count(:all)
       ExTracker.Cmd.show_swarm_count()
     end
 
@@ -146,7 +146,7 @@ defmodule ExTracker.Backup do
 
         Logger.notice("backup restored")
         if Application.get_env(:extracker, :backup_display_stats) do
-          ExTracker.Cmd.show_peer_count()
+          ExTracker.Cmd.show_peer_count(:all)
           ExTracker.Cmd.show_swarm_count()
         end
       :error -> :ok
