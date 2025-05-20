@@ -31,7 +31,7 @@ defmodule ExTracker.Types.AnnounceResponse do
   # BEP 24 'Tracker Returns External IP' extra field
   def append_external_ip(response, ip) do
     case Application.get_env(:extracker, :return_external_ip) do
-      true -> Map.put(response, "external ip", ExTracker.Utils.ipv4_to_bytes(ip))
+      true -> Map.put(response, "external ip", ExTracker.Utils.ip_to_bytes(ip))
       _ -> response
     end
   end

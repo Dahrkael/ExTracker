@@ -156,7 +156,7 @@ defmodule ExTracker.Processors.Announce do
     # convert the peers to the expected representation for delivery
     peer_list = Enum.map(peer_list, fn peer ->
         case request.compact do
-          true -> ipv4_to_bytes(peer.ip) <> port_to_bytes(peer.port)
+          true -> ip_to_bytes(peer.ip) <> port_to_bytes(peer.port)
           false ->
             {id, data} = peer
             result = %{"ip" => id.ip, "port" => id.port}

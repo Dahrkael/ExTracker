@@ -32,9 +32,9 @@ require Logger
       true ->
         Logger.notice("IPv4 enabled on address #{inspect(Application.get_env(:extracker, :ipv4_bind_address))}")
         []
-          ++ get_http_children(:ipv4)
-          ++ get_https_children(:ipv4)
-          ++ get_udp_children(:ipv4)
+          ++ get_http_children(:inet)
+          ++ get_https_children(:inet)
+          ++ get_udp_children(:inet)
       _ -> []
     end
 
@@ -42,9 +42,9 @@ require Logger
       true ->
         Logger.notice("IPv6 enabled on address #{inspect(Application.get_env(:extracker, :ipv6_bind_address))}")
         []
-          ++ get_http_children(:ipv6)
-          ++ get_https_children(:ipv6)
-          ++ get_udp_children(:ipv6)
+          ++ get_http_children(:inet6)
+          ++ get_https_children(:inet6)
+          ++ get_udp_children(:inet6)
       _ -> []
     end
 
@@ -106,30 +106,30 @@ require Logger
     end
   end
 
-  defp get_http_children(ipversion) do
+  defp get_http_children(family) do
     case Application.get_env(:extracker, :http_enabled) do
       true ->
-        {type, ip} = case ipversion do
-          :ipv4 -> {:inet, Utils.get_configured_ipv4()}
-          :ipv6 -> {:inet6, Utils.get_configured_ipv6()}
+        ip = case family do
+          :inet -> Utils.get_configured_ipv4()
+          :inet6 -> Utils.get_configured_ipv6()
         end
         port = Application.get_env(:extracker, :http_port)
 
         http_spec = Supervisor.child_spec(
           {Plug.Cowboy, scheme: :http, plug: ExTracker.HTTP.Router, options: [
-            net: type,
+            net: family,
             ip: ip,
             port: port,
             compress: true,
-            ref: "http_router_#{to_string(ipversion)}",
+            ref: "http_router_#{to_string(family)}",
             dispatch: dispatch(),
             transport_options: [
               num_acceptors: 100,
               max_connections: 100_000,
             ]
-          ] ++ (if ipversion == :ipv6, do: [ipv6_v6only: true], else: [])
+          ] ++ (if family == :inet6, do: [ipv6_v6only: true], else: [])
           },
-          id: :"http_supervisor_#{ipversion}"
+          id: :"http_supervisor_#{family}"
         )
 
         Logger.notice("HTTP mode enabled on port #{port}")
@@ -144,27 +144,32 @@ require Logger
     end
   end
 
-  defp get_https_children(ipversion) do
+  defp get_https_children(family) do
     case Application.get_env(:extracker, :https_enabled) do
       true ->
-        ip = case ipversion do
-          :ipv4 -> Utils.get_configured_ipv4()
-          :ipv6 -> Utils.get_configured_ipv6()
+        ip = case family do
+          :inet -> Utils.get_configured_ipv4()
+          :inet6 -> Utils.get_configured_ipv6()
         end
         port = Application.get_env(:extracker, :https_port)
 
-        https_spec = Plug.Cowboy.child_spec(scheme: :https, plug: ExTracker.HTTP.Router, options: [
-          # net: :inet or :inet6 # set automatically based on the ip
-          ip: ip,
-          port: port,
-          keyfile: "",
-          compress: true,
-          dispatch: dispatch(),
-          transport_options: [
-            num_acceptors: 100,
-            max_connections: 100_000
-          ]
-        ])
+        https_spec = Supervisor.child_spec(
+          {Plug.Cowboy, scheme: :https, plug: ExTracker.HTTP.Router, options: [
+            net: family,
+            ip: ip,
+            port: port,
+            keyfile: "",
+            compress: true,
+            ref: "https_router_#{to_string(family)}",
+            dispatch: dispatch(),
+            transport_options: [
+              num_acceptors: 100,
+              max_connections: 100_000,
+            ]
+          ] ++ (if family == :inet6, do: [ipv6_v6only: true], else: [])
+          },
+          id: :"https_supervisor_#{family}"
+        )
 
         Logger.notice("HTTPS mode enabled on port #{port}")
         #if Application.ensure_started(:ranch) do
@@ -178,7 +183,7 @@ require Logger
     end
   end
 
-  defp get_udp_children(ipversion) do
+  defp get_udp_children(family) do
     case Application.get_env(:extracker, :udp_enabled) do
       true ->
         n = case Application.get_env(:extracker, :udp_routers, -1) do
@@ -191,8 +196,8 @@ require Logger
 
         Enum.map(n, fn index ->
           Supervisor.child_spec(
-            {ExTracker.UDP.Supervisor, [ipversion: ipversion, port: port, index: index - 1]},
-            id: :"udp_supervisor_#{ipversion}_#{index}")
+            {ExTracker.UDP.Supervisor, [family: family, port: port, index: index - 1]},
+            id: :"udp_supervisor_#{family}_#{index}")
         end)
 
       false ->
