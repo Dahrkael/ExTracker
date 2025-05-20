@@ -152,13 +152,14 @@ require Logger
           :inet6 -> Utils.get_configured_ipv6()
         end
         port = Application.get_env(:extracker, :https_port)
+        keyfile = Application.get_env(:extracker, :https_keyfile, "") |> Path.expand()
 
         https_spec = Supervisor.child_spec(
           {Plug.Cowboy, scheme: :https, plug: ExTracker.HTTP.Router, options: [
             net: family,
             ip: ip,
             port: port,
-            keyfile: "",
+            keyfile: keyfile,
             compress: true,
             ref: "https_router_#{to_string(family)}",
             dispatch: dispatch(),

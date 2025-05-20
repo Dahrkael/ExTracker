@@ -11,6 +11,7 @@ if config_env() in [:prod] do
     http_port: 6969, # port used by the HTTP endpoint if enabled
     https_enabled: false, # enable the TLS endpoint to fulfill client requests
     https_port: 7070, # port used by the TLS endpoint if enabled
+    https_keyfile: "", # path to the certificate file for TLS
     udp_enabled: true, # enable the UDP endpoint to fulfill client requests
     udp_port: 6969, # port usesd by the UDP endpoint if enabled
     udp_routers: -1, # amount of processes listening to UDP requests. -1 means one per VM scheduler
