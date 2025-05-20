@@ -10,7 +10,7 @@ defmodule ExTracker.Utils do
     String.downcase(Base.encode16(hash))
   end
 
-  def ipv4_to_bytes(ip) when is_tuple(ip) and tuple_size(ip) == 4 do
+  def ip_to_bytes(ip) when is_tuple(ip) do
     ip |> Tuple.to_list() |> :binary.list_to_bin()
   end
 
@@ -20,6 +20,22 @@ defmodule ExTracker.Utils do
 
   def port_to_bytes(port) do
     <<port::16>>
+  end
+
+  def get_configured_ipv4() do
+    {:ok, address} =
+      Application.get_env(:extracker, :ipv4_bind_address)
+      |> to_charlist()
+      |> :inet.parse_ipv4_address()
+      address
+  end
+
+  def get_configured_ipv6() do
+    {:ok, address} =
+      Application.get_env(:extracker, :ipv6_bind_address)
+      |> to_charlist()
+      |> :inet.parse_ipv6_address()
+      address
   end
 
   # v1 hex-string hash (40 bytes, SHA-1)

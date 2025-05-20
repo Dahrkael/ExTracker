@@ -1,6 +1,6 @@
 defmodule ExTracker.Types.AnnounceResponse do
 
-  def generate_success(peer_list, total_seeders, total_leechers) do
+  def generate_success(family, compact, peer_list, total_seeders, total_leechers) do
     response = %{
       #warning message: (new, optional) Similar to failure reason, but the response still gets processed normally. The warning message is shown just like an error.
       #interval: Interval in seconds that the client should wait between sending regular requests to the tracker.
@@ -19,6 +19,13 @@ defmodule ExTracker.Types.AnnounceResponse do
       "peers" => peer_list
     }
 
+    case {compact, family} do
+      # if its compact and ipv6 use 'peers6'
+      {true, :inet6} -> Map.put(response, "peers6", peer_list)
+      # in all other cases just use 'peers'
+      {_, _} -> Map.put(response, "peers", peer_list)
+    end
+
     #min interval: (optional) Minimum announce interval. If present clients must not reannounce more frequently than this.
     response = case Application.fetch_env(:extracker, :announce_interval_min) do
       {:ok, value}-> Map.put(response, "min interval", value)
@@ -31,7 +38,7 @@ defmodule ExTracker.Types.AnnounceResponse do
   # BEP 24 'Tracker Returns External IP' extra field
   def append_external_ip(response, ip) do
     case Application.get_env(:extracker, :return_external_ip) do
-      true -> Map.put(response, "external ip", ExTracker.Utils.ipv4_to_bytes(ip))
+      true -> Map.put(response, "external ip", ExTracker.Utils.ip_to_bytes(ip))
       _ -> response
     end
   end

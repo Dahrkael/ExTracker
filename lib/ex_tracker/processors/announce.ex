@@ -21,7 +21,7 @@ defmodule ExTracker.Processors.Announce do
           {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request), # generate peer list
           {:ok, totals} <- get_total_peers(swarm, client) # get number of seeders and leechers for this swarm
         do
-          generate_success_response(peer_list, totals, source_ip)
+          generate_success_response(client.family, request.compact, peer_list, totals, source_ip)
         else
           {:error, error} ->
             Logger.info("peer #{client} received an error: #{error}")
@@ -156,7 +156,7 @@ defmodule ExTracker.Processors.Announce do
     # convert the peers to the expected representation for delivery
     peer_list = Enum.map(peer_list, fn peer ->
         case request.compact do
-          true -> ipv4_to_bytes(peer.ip) <> port_to_bytes(peer.port)
+          true -> ip_to_bytes(peer.ip) <> port_to_bytes(peer.port)
           false ->
             {id, data} = peer
             result = %{"ip" => id.ip, "port" => id.port}
@@ -179,10 +179,10 @@ defmodule ExTracker.Processors.Announce do
     {:ok, {seeders, leechers}}
   end
 
-  defp generate_success_response(peer_list, totals, source_ip) do
+  defp generate_success_response(family, compact, peer_list, totals, source_ip) do
     {total_seeders, total_leechers} = totals
     response =
-      AnnounceResponse.generate_success(peer_list, total_seeders, total_leechers)
+      AnnounceResponse.generate_success(family, compact, peer_list, total_seeders, total_leechers)
       |> AnnounceResponse.append_external_ip(source_ip)
     {:ok, response}
   end
