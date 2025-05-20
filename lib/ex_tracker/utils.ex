@@ -10,8 +10,12 @@ defmodule ExTracker.Utils do
     String.downcase(Base.encode16(hash))
   end
 
-  def ip_to_bytes(ip) when is_tuple(ip) do
+  def ip_to_bytes(ip) when is_tuple(ip) and tuple_size(ip) == 4 do
     ip |> Tuple.to_list() |> :binary.list_to_bin()
+  end
+
+  def ip_to_bytes(ip) when is_tuple(ip) and tuple_size(ip) == 8 do
+    ip |> Tuple.to_list() |> Enum.map(fn num -> <<num::16>> end) |> IO.iodata_to_binary()
   end
 
   def ipv4_to_bytes(ip) do

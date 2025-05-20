@@ -34,10 +34,16 @@ defmodule ExTracker.UtilsTest do
   end
 
   describe "ip_to_bytes/1" do
-    test "convert an IP tuple into a binary" do
+    test "convert an IPv4 tuple into a binary" do
       ip = {127, 0, 0, 1}
       result = Utils.ip_to_bytes(ip)
       assert result == <<127, 0, 0, 1>>
+    end
+
+    test "convert an IPv6 tuple into a binary" do
+      ip = {9225, 35413, 38466, 7920, 14778, 38138, 22855, 51913}
+      result = Utils.ip_to_bytes(ip)
+      assert result == <<36, 9, 138, 85, 150, 66, 30, 240, 57, 186, 148, 250, 89, 71, 202, 201>>
     end
   end
 
