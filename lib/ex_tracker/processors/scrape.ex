@@ -30,11 +30,11 @@ defmodule ExTracker.Processors.Scrape do
   end
 
   def get_total_seeders(swarm) do
-    {:ok, ExTracker.Swarm.get_seeder_count(swarm)}
+    {:ok, ExTracker.Swarm.get_seeder_count(swarm, :all)}
   end
 
   def get_total_leechers(swarm) do
-    {:ok, ExTracker.Swarm.get_leecher_count(swarm)}
+    {:ok, ExTracker.Swarm.get_leecher_count(swarm, :all)}
   end
 
   def get_total_downloads(_swarm) do

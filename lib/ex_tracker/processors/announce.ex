@@ -19,7 +19,7 @@ defmodule ExTracker.Processors.Announce do
           :ok <- check_announce_interval(client, peer_data), # is the peer respecting the provided intervals?
           {:ok, peer_data} <- update_stats(swarm, client, peer_data, request), # update peer stats
           {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request), # generate peer list
-          {:ok, totals} <- get_total_peers(swarm) # get number of seeders and leechers for this swarm
+          {:ok, totals} <- get_total_peers(swarm, client) # get number of seeders and leechers for this swarm
         do
           generate_success_response(peer_list, totals, source_ip)
         else
@@ -117,7 +117,7 @@ defmodule ExTracker.Processors.Announce do
     end
   end
 
-  defp generate_peer_list(swarm, _client, peer_data, _event, request) do
+  defp generate_peer_list(swarm, client, peer_data, _event, request) do
     need_peer_data = !request.compact
     max_peers = Application.get_env(:extracker, :max_peers_returned, 25)
     desired_total = if request.numwant > max_peers or request.numwant < 0, do: max_peers, else: request.numwant
@@ -125,7 +125,7 @@ defmodule ExTracker.Processors.Announce do
     peer_list = case peer_data.left do
       0 ->
         # peer is seeding so try to give it leechers
-        leechers = ExTracker.Swarm.get_leechers(swarm, :infinity, need_peer_data)
+        leechers = ExTracker.Swarm.get_leechers(swarm, :all, client.family, need_peer_data)
         case length(leechers) do
           length when length == desired_total ->
             # if theres just enough peers to fill the list that's great
@@ -135,11 +135,11 @@ defmodule ExTracker.Processors.Announce do
             Enum.take_random(leechers, desired_total)
           length when length < desired_total ->
             # there are not enough leechers so try to fill up with some random seeders
-            ExTracker.Swarm.get_seeders(swarm, :infinity, need_peer_data) |> Enum.take_random(desired_total - length)
+            ExTracker.Swarm.get_seeders(swarm, :all, client.family, need_peer_data) |> Enum.take_random(desired_total - length)
         end
       _ ->
         # peer is leeching so try to give it seeders
-        seeders = ExTracker.Swarm.get_seeders(swarm, :infinity, need_peer_data)
+        seeders = ExTracker.Swarm.get_seeders(swarm, :all, client.family, need_peer_data)
         case length(seeders) do
           length when length == desired_total ->
             # if theres just enough peers to fill the list that's great
@@ -149,7 +149,7 @@ defmodule ExTracker.Processors.Announce do
             Enum.take_random(seeders, desired_total)
           length when length < desired_total ->
             # there are not enough seeders so try to fill up with some random leechers
-            ExTracker.Swarm.get_leechers(swarm, :infinity, need_peer_data) |> Enum.take_random(desired_total - length)
+            ExTracker.Swarm.get_leechers(swarm, :all, client.family, need_peer_data) |> Enum.take_random(desired_total - length)
         end
     end
 
@@ -173,9 +173,9 @@ defmodule ExTracker.Processors.Announce do
     end
   end
 
-  defp get_total_peers(swarm) do
-    seeders = ExTracker.Swarm.get_seeder_count(swarm)
-    leechers = ExTracker.Swarm.get_leecher_count(swarm)
+  defp get_total_peers(swarm, client) do
+    seeders = ExTracker.Swarm.get_seeder_count(swarm, client.family)
+    leechers = ExTracker.Swarm.get_leecher_count(swarm, client.family)
     {:ok, {seeders, leechers}}
   end
 

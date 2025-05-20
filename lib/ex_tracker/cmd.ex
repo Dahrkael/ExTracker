@@ -25,7 +25,7 @@ defmodule ExTracker.Cmd do
       }
 
       info = case show_peers do
-        true -> Map.put(info, "peers", ExTracker.Swarm.get_peers(table, :infinity, false))
+        true -> Map.put(info, "peers", ExTracker.Swarm.get_all_peers(table, false))
         false-> Map.put(info, "peer_count", ExTracker.Swarm.get_peer_count(table))
       end
 
@@ -102,7 +102,7 @@ defmodule ExTracker.Cmd do
       {:ok, swarm} <- get_swarm(hash)
       do
         memory = :ets.info(swarm, :memory) * :erlang.system_info(:wordsize)
-        peers = ExTracker.Swarm.get_peers(swarm, :infinity, false)
+        peers = ExTracker.Swarm.get_all_peers(swarm, false)
         info = %{
           "swarm" => String.downcase(Base.encode16(hash)),
           "total_memory" => memory,
@@ -122,42 +122,42 @@ defmodule ExTracker.Cmd do
     end
   end
 
-  def show_peer_count() do
+  def show_peer_count(family) do
     total = ExTracker.SwarmFinder.get_swarm_list()
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
-      ExTracker.Swarm.get_peer_count(table)
+      ExTracker.Swarm.get_peer_count(table, family)
     end, ordered: false)
     |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
-    IO.inspect(total, label: "Total peers")
+    IO.inspect(total, label: "Total peers (family: #{to_string(family)})")
     :ok
   end
 
-  def show_leecher_count() do
+  def show_leecher_count(family) do
     total = ExTracker.SwarmFinder.get_swarm_list()
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
-      (ExTracker.Swarm.get_leechers(table, :infinity, false) |> length())
+      ExTracker.Swarm.get_leecher_count(table, family)
     end, ordered: false)
     |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
-    IO.inspect(total, label: "Total leechers")
+    IO.inspect(total, label: "Total leechers (family: #{to_string(family)})")
     :ok
   end
 
-  def show_seeder_count() do
+  def show_seeder_count(family) do
     total = ExTracker.SwarmFinder.get_swarm_list()
     |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
-      (ExTracker.Swarm.get_seeders(table, :infinity, false) |> length())
+      ExTracker.Swarm.get_seeder_count(table, family)
     end, ordered: false)
     |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
     |> Enum.sum()
 
-    IO.inspect(total, label: "Total seeders")
+    IO.inspect(total, label: "Total seeders (family: #{to_string(family)})")
     :ok
   end
 

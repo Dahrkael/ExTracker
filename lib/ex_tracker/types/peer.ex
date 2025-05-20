@@ -1,11 +1,24 @@
 defmodule ExTracker.Types.PeerID do
   alias ExTracker.Types.PeerID
 
-  @enforce_keys [:ip, :port]
-  defstruct [:ip, :port]
+  @enforce_keys [:ip, :port, :family]
+  defstruct [:ip, :port, :family]
 
   def new(ip, port) do
-    %PeerID{ip: ip, port: port}
+    family = cond do
+      tuple_size(ip) == 4 -> :inet
+      tuple_size(ip) == 8 -> :inet6
+    end
+
+    %PeerID{ip: ip, port: port, family: family}
+  end
+
+  def is_ipv4(%PeerID{family: family}) do
+    family == :inet
+  end
+
+  def is_ipv6(%PeerID{family: family}) do
+    family == :inet6
   end
 end
 
