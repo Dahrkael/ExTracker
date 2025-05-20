@@ -21,7 +21,7 @@ defmodule ExTracker.Processors.Announce do
           {:ok, peer_list} <- generate_peer_list(swarm, client, peer_data, event, request), # generate peer list
           {:ok, totals} <- get_total_peers(swarm, client) # get number of seeders and leechers for this swarm
         do
-          generate_success_response(peer_list, totals, source_ip)
+          generate_success_response(client.family, request.compact, peer_list, totals, source_ip)
         else
           {:error, error} ->
             Logger.info("peer #{client} received an error: #{error}")
@@ -179,10 +179,10 @@ defmodule ExTracker.Processors.Announce do
     {:ok, {seeders, leechers}}
   end
 
-  defp generate_success_response(peer_list, totals, source_ip) do
+  defp generate_success_response(family, compact, peer_list, totals, source_ip) do
     {total_seeders, total_leechers} = totals
     response =
-      AnnounceResponse.generate_success(peer_list, total_seeders, total_leechers)
+      AnnounceResponse.generate_success(family, compact, peer_list, total_seeders, total_leechers)
       |> AnnounceResponse.append_external_ip(source_ip)
     {:ok, response}
   end

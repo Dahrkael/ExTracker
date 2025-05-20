@@ -1,6 +1,6 @@
 defmodule ExTracker.Types.AnnounceResponse do
 
-  def generate_success(peer_list, total_seeders, total_leechers) do
+  def generate_success(family, compact, peer_list, total_seeders, total_leechers) do
     response = %{
       #warning message: (new, optional) Similar to failure reason, but the response still gets processed normally. The warning message is shown just like an error.
       #interval: Interval in seconds that the client should wait between sending regular requests to the tracker.
@@ -18,6 +18,13 @@ defmodule ExTracker.Types.AnnounceResponse do
       #peers: (binary model) Instead of using the dictionary model described above, the peers value may be a string consisting of multiples of 6 bytes. First 4 bytes are the IP address and last 2 bytes are the port number. All in network (big endian) notation.
       "peers" => peer_list
     }
+
+    case {compact, family} do
+      # if its compact and ipv6 use 'peers6'
+      {true, :inet6} -> Map.put(response, "peers6", peer_list)
+      # in all other cases just use 'peers'
+      {_, _} -> Map.put(response, "peers", peer_list)
+    end
 
     #min interval: (optional) Minimum announce interval. If present clients must not reannounce more frequently than this.
     response = case Application.fetch_env(:extracker, :announce_interval_min) do

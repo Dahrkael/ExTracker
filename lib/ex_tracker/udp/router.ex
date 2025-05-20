@@ -211,7 +211,7 @@ defmodule ExTracker.UDP.Router do
     {:ok, interval} <- Map.fetch(result, "interval"),
     {:ok, leechers} <- Map.fetch(result, "incomplete"),
     {:ok, seeders} <- Map.fetch(result, "complete"),
-    {:ok, peers} <- Map.fetch(result, "peers")
+    {:ok, peers} <- retrieve_announce_peers(result)
     do
       <<
         # 32-bit integer  transaction_id
@@ -224,7 +224,7 @@ defmodule ExTracker.UDP.Router do
         leechers::integer-unsigned-32,
         # 32-bit integer  seeders
         seeders::integer-unsigned-32,
-        # 32-bit integer  IP address
+        # 32-bit or 128-bit integer  IP address
         # 16-bit integer  TCP port
         # 6 * N
         peers::binary
@@ -323,6 +323,13 @@ defmodule ExTracker.UDP.Router do
     case Application.get_env(:extracker, :scrape_enabled) do
       true -> :ok
       _ -> {:error, "scraping is disabled"}
+    end
+  end
+
+  defp retrieve_announce_peers(result) do
+    case Map.fetch(result, "peers") do
+      {:ok, peers} -> {:ok, peers}
+      :error -> Map.fetch(result, "peers6")
     end
   end
 
