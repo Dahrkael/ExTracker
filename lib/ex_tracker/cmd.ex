@@ -102,12 +102,29 @@ defmodule ExTracker.Cmd do
       {:ok, swarm} <- get_swarm(hash)
       do
         memory = :ets.info(swarm, :memory) * :erlang.system_info(:wordsize)
-        peers = ExTracker.Swarm.get_all_peers(swarm, false)
+
         info = %{
           "swarm" => String.downcase(Base.encode16(hash)),
           "total_memory" => memory,
           "peer_memory" => (memory / :ets.info(swarm, :size)),
-          "peers" => peers
+          "peers" => %{
+            "all" => %{
+              "count" => ExTracker.Swarm.get_peer_count(swarm),
+              "total" => ExTracker.Swarm.get_peer_count(swarm, :all),
+              "leechers" => ExTracker.Swarm.get_seeder_count(swarm, :all),
+              "seeders" => ExTracker.Swarm.get_leecher_count(swarm, :all)
+            },
+            "ipv4" => %{
+              "total" => ExTracker.Swarm.get_peer_count(swarm, :inet),
+              "leechers" => ExTracker.Swarm.get_leecher_count(swarm, :inet),
+              "seeders" => ExTracker.Swarm.get_seeder_count(swarm, :inet)
+            },
+            "ipv6" => %{
+              "total" => ExTracker.Swarm.get_peer_count(swarm, :inet6),
+              "leechers" => ExTracker.Swarm.get_leecher_count(swarm, :inet6),
+              "seeders" => ExTracker.Swarm.get_seeder_count(swarm, :inet6)
+            },
+          }
         }
 
         IO.inspect(info)
