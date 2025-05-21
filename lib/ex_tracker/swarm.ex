@@ -1,4 +1,5 @@
 defmodule ExTracker.Swarm do
+  require Logger
   alias ExTracker.Types.PeerData
 
   # try to find and retrieve a peer registered in the specified swarm
@@ -64,7 +65,13 @@ defmodule ExTracker.Swarm do
 
   # get the total number of peers registered in the specified swarm
   def get_peer_count(swarm) do
+    try do
     :ets.info(swarm, :size)
+    rescue
+      e in ArgumentError ->
+        Logger.warning("get_peer_count/1: #{Exception.message(e)}")
+        0
+    end
   end
 
   # get the total number of peers registered in the specified swarm filtered by ipv4 or ipv6
@@ -113,9 +120,16 @@ defmodule ExTracker.Swarm do
     spec = [{{:"$1", :"$2"}, spec_condition, spec_match}]
 
     # execute the specified request
-    case count do
-      :all -> :ets.select(swarm, spec)
-      integer -> :ets.select(swarm, spec, integer)
+    try do
+      case count do
+        :all -> :ets.select(swarm, spec)
+        integer -> :ets.select(swarm, spec, integer)
+      end
+    rescue
+      # the swarm table may be gone while the query reaches this point
+      e in ArgumentError ->
+        Logger.warning("get_peers/5: #{Exception.message(e)}")
+        0
     end
   end
 
