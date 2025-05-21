@@ -178,6 +178,23 @@ defmodule ExTracker.Cmd do
     :ok
   end
 
+  def show_countries(family) do
+    countries = ExTracker.SwarmFinder.get_swarm_list()
+    |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
+      ExTracker.Swarm.get_all_peers(table, true)
+    end, ordered: false)
+    |> Stream.reject(&match?({_, :undefined}, &1))
+    |> Stream.map(&elem(&1, 1))
+    |> Enum.to_list()
+    |> List.flatten()
+    |> Enum.group_by(fn {id, data} -> data.country end)
+    |> Enum.map(fn {country, peers} -> {country, length(peers)} end)
+    |> Enum.sort_by(fn {_country, sum} -> sum end)
+
+    IO.inspect(countries, label: "Total peers by country (family: #{to_string(family)})")
+    :ok
+  end
+
   def create_fake_swarms(swarm_count, peer_count) do
     start = System.monotonic_time(:millisecond)
     Enum.map(1..swarm_count, fn _s ->
