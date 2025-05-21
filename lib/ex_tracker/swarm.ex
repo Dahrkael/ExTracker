@@ -129,7 +129,7 @@ defmodule ExTracker.Swarm do
       # the swarm table may be gone while the query reaches this point
       e in ArgumentError ->
         Logger.warning("get_peers/5: #{Exception.message(e)}")
-        0
+        []
     end
   end
 
