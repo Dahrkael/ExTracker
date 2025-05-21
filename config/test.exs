@@ -30,7 +30,11 @@ config :extracker,
   backup_auto_load_on_startup: false,
   backup_auto_interval: 60_000,
   backup_auto_path: "~/extracker.bck",
-  backup_display_stats: true
+  backup_display_stats: true,
+  geoip_enabled: false
 
 config :logger,
   level: :debug
+
+config :locus,
+  license_key: ""

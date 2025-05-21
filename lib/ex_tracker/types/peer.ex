@@ -40,6 +40,7 @@ defmodule ExTracker.Types.PeerData do
     uploaded: 0,
     downloaded: 0,
     left: 0,
+    country: "",
     state: :fresh,
     last_updated: 0
   ]
@@ -80,6 +81,10 @@ defmodule ExTracker.Types.PeerData do
 
   def update_left(peer_data, value) when is_integer(value) do
     %PeerData{peer_data | left: value}
+  end
+
+  def update_country(peer_data, country) when is_binary(country) do
+    %PeerData{peer_data | country: country}
   end
 
   @spec update_state(peer_data :: PeerData, state :: peer_state()) :: PeerData

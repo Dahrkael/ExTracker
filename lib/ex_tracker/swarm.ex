@@ -14,12 +14,25 @@ defmodule ExTracker.Swarm do
   @spec add_peer(swarm :: any(), id :: PeerID) :: {:ok, PeerData} | {:error, any()}
   def add_peer(swarm, id) do
     data = %PeerData{
+      country: geoip_lookup_country(id.ip),
       last_updated: System.system_time(:millisecond)
     }
+
     peer = {id, data}
     case :ets.insert_new(swarm, peer) do
       true -> {:ok, data}
       false -> {:error, "peer already exists"}
+    end
+  end
+
+  defp geoip_lookup_country(ip) do
+    case Application.get_env(:extracker, :geoip_enabled, false) do
+      true ->
+        case :locus.lookup(:country, ip) do
+          {:ok, data} -> data["country"]["iso_code"]
+          _ -> ""
+        end
+      false -> ""
     end
   end
 

@@ -28,6 +28,13 @@ require Logger
       { ExTracker.Backup, {}}
     ]
 
+    optional_children = case Application.get_env(:extracker, :geoip_enabled) do
+      true ->
+        Logger.notice("GeoIP lookup enabled")
+        [:locus.loader_child_spec(:country, {:maxmind, "GeoLite2-Country"})]
+      _ -> []
+    end
+
     ipv4_optional_children = case Application.get_env(:extracker, :ipv4_enabled) do
       true ->
         Logger.notice("IPv4 enabled on address #{inspect(Application.get_env(:extracker, :ipv4_bind_address))}")
@@ -48,7 +55,7 @@ require Logger
       _ -> []
     end
 
-    children = Enum.concat([required_children, ipv4_optional_children, ipv6_optional_children])
+    children = Enum.concat([required_children, optional_children, ipv4_optional_children, ipv6_optional_children])
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
