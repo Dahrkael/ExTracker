@@ -189,9 +189,9 @@ defmodule ExTracker.Cmd do
     |> List.flatten()
     |> Enum.group_by(fn {id, data} -> data.country end)
     |> Enum.map(fn {country, peers} -> {country, length(peers)} end)
-    |> Enum.sort_by(fn {_country, sum} -> sum end)
+    |> Enum.sort_by(fn {_country, sum} -> sum end, :desc)
 
-    IO.inspect(countries, label: "Total peers by country (family: #{to_string(family)})")
+    IO.inspect(countries, label: "Total peers by country (family: #{to_string(family)})", limit: :infinity)
     :ok
   end
 
