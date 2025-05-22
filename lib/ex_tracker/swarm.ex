@@ -69,7 +69,7 @@ defmodule ExTracker.Swarm do
     :ets.info(swarm, :size)
     rescue
       e in ArgumentError ->
-        Logger.warning("get_peer_count/1: #{Exception.message(e)}")
+        Logger.debug("get_peer_count/1: #{Exception.message(e)}")
         0
     end
   end
@@ -128,7 +128,7 @@ defmodule ExTracker.Swarm do
     rescue
       # the swarm table may be gone while the query reaches this point
       e in ArgumentError ->
-        Logger.warning("get_peers/5: #{Exception.message(e)}")
+        Logger.debug("get_peers/5: #{Exception.message(e)}")
         []
     end
   end

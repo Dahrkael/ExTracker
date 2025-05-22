@@ -187,7 +187,7 @@ defmodule ExTracker.Cmd do
     |> Stream.map(&elem(&1, 1))
     |> Enum.to_list()
     |> List.flatten()
-    |> Enum.group_by(fn {id, data} -> data.country end)
+    |> Enum.group_by(fn {_id, data} -> data.country end)
     |> Enum.map(fn {country, peers} -> {country, length(peers)} end)
     |> Enum.sort_by(fn {_country, sum} -> sum end, :desc)
 
