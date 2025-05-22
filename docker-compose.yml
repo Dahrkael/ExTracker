@@ -1,0 +1,57 @@
+services:
+  extracker:
+    image: ghcr.io/dahrkael/extracker:latest
+    container_name: extracker
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        RELEASE_NAME: "extracker"
+    restart: unless-stopped
+    ports:
+      - "6969:6969/tcp"  # HTTP port
+      - "6969:6969/udp"  # UDP port
+      - "7070:7070/tcp"  # HTTPS port
+    volumes:
+      - extracker_backups:/backups
+      - extracker_config:/config
+    environment:
+#      - EXTRACKER_IPV4_ENABLED=
+#      - EXTRACKER_IPV4_BIND_ADDRESS=
+#      - EXTRACKER_IPV6_ENABLED=
+#      - EXTRACKER_IPV6_BIND_ADDRESS=
+#      - EXTRACKER_HTTP_ENABLED=
+#      - EXTRACKER_HTTP_PORT=
+#      - EXTRACKER_HTTPS_ENABLED=
+#      - EXTRACKER_HTTPS_PORT=
+#      - EXTRACKER_HTTPS_KEYFILE=
+#      - EXTRACKER_UDP_ENABLED=
+#      - EXTRACKER_UDP_PORT=
+#      - EXTRACKER_UDP_ROUTERS=
+#      - EXTRACKER_UDP_BUFFER_SIZE=
+#      - EXTRACKER_UDP_RECBUF_SIZE=
+#      - EXTRACKER_UDP_SNDBUF_SIZE=
+#      - EXTRACKER_SCRAPE_ENABLED=
+#      - EXTRACKER_CONNECTION_ID_SECRET=
+#      - EXTRACKER_FORCE_COMPACT_PEERS=
+#      - EXTRACKER_RETURN_EXTERNAL_IP=
+#      - EXTRACKER_MAX_PEERS_RETURNED=
+#      - EXTRACKER_ANNOUNCE_INTERVAL=
+#      - EXTRACKER_ANNOUNCE_INTERVAL_MIN=
+#      - EXTRACKER_CLEANING_INTERVAL=
+#      - EXTRACKER_SWARM_CLEAN_DELAY=
+#      - EXTRACKER_PEER_CLEANUP_DELAY=
+#      - EXTRACKER_COMPRESS_LOOKUPS=
+#      - EXTRACKER_NAMED_LOOKUPS=
+#      - EXTRACKER_BACKUP_AUTO_ENABLED=
+#      - EXTRACKER_BACKUP_AUTO_LOAD_ON_STARTUP=
+#      - EXTRACKER_BACKUP_AUTO_INTERVAL=
+      - EXTRACKER_BACKUP_AUTO_PATH=/backups/extracker.bck
+#      - EXTRACKER_BACKUP_DISPLAY_STATS=
+#      - EXTRACKER_GEOIP_ENABLED=
+#      - EXTRACKER_GEOIP_LICENSE_KEY=
+#      - EXTRACKER_DEBUG=false
+
+volumes:
+  extracker_backups:
+  extracker_config:
