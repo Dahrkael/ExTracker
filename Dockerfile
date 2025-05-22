@@ -31,6 +31,13 @@ RUN mix release ${RELEASE_NAME}
 # Stage 2: runtime
 FROM alpine:latest
 
+# add labels
+LABEL org.opencontainers.image.source="https://github.com/Dahrkael/ExTracker"
+LABEL org.opencontainers.image.authors="Dahrkael <dahrkael@outlook.com>"
+LABEL org.opencontainers.image.title="ExTracker"
+LABEL org.opencontainers.image.description="ExTracker BitTorrent Tracker"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+
 ARG RELEASE_NAME
 ENV MIX_ENV=prod
 WORKDIR /app
