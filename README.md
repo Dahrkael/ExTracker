@@ -1,15 +1,21 @@
 # ExTracker
 The Bittorrent Tracker made in Elixir
 
-👷‍♂️This project is a Work In Progress. While not ready for full industrial usage it does work fairly well.
-
-There is a testing instance running at **extracker.dahrkael.net:6969** with all current features enabled.
-
 [![CI](https://github.com/Dahrkael/ExTracker/actions/workflows/build-on-push.yml/badge.svg)](https://github.com/Dahrkael/ExTracker/actions/workflows/build-on-push.yml)
+[![CI](https://github.com/Dahrkael/ExTracker/actions/workflows/test-on-push.yml/badge.svg)](https://github.com/Dahrkael/ExTracker/actions/workflows/test-on-push.yml)
+[![CI](https://github.com/Dahrkael/ExTracker/actions/workflows/docker-release.yml/badge.svg)](https://github.com/Dahrkael/ExTracker/actions/workflows/docker-release.yml)
+
+👷‍♂️This project is a Work In Progress. While not ready for full industrial usage it does work.  
+There is a testing instance running at [extracker.dahrkael.net:6969](http://extracker.dahrkael.net:6969/about) with all current features enabled.
 
 ## Features
 Implementation Legend: 
 🔲 Not Yet 🔰 Partially ✅ Done ❌ Won't do
+
+### Important Features
+- ✅ High performance (uses ALL the available cores, in-memory storage)
+- ✅ Low memory usage (~200MB of RAM for each 1.000.000 peers)
+- ✅ Zero setup (launch it and it just works)
 
 ### Tracker-related BitTorrent Enhancement Proposals
 
@@ -30,24 +36,41 @@ Implementation Legend:
 #### Deferred BEPs
 - ❌ **BEP 8:** [Tracker Peer Obfuscation](https://www.bittorrent.org/beps/bep_0008.html)
 
-### Non-BEP Features
+### Other Features
 - ✅ HTTPS support
 - ✅ Database backups to disk
 - ❌ WebTorrent
 - 🔲 Infohash whitelist/blacklist
-- 🔰 Peer management (interval enforcement, banning, etc)
+- 🔰 Peer management (interval enforcement, cleanup, banning, etc)
+- 🔲 Metrics
 - **Feel free to propose features in the [Issues](https://github.com/Dahrkael/ExTracker/issues)**
 
-## Interesting bit of Technical Information
+## Setup
+There are 3 main ways of running ExTracker currently
 
-- Both the HTTP(S) and UDP frontends scale linearly with the number of cpu cores. The more the better!
-- Each swarm (torrent) is stored in-memory for fast access. Heres a table showing how much memory a swarm uses based on the number of peers registered in it:
+### Straight from source code
+For this method to work you need to have **Erlang** and **Elixir** installed on your system
+- Clone the repository: `git clone https://github.com/Dahrkael/ExTracker.git && cd ExTracker`
+- If needed, modify the configuration in [config/runtime.exs](https://github.com/Dahrkael/ExTracker/blob/master/config/runtime.exs) to fit your needs
+- run `MIX_ENV=prod iex -S mix`
 
-| Peer Count | Total Memory |
-|:-----------|:-------------|
-| 10         | 4.65 KB      |
-| 100        | 25.04 KB     |
-| 1000       | 246.99 KB    |
-| 10000      | 2.29 MB      |
-| 100000     | 22.90 MB     |
-| 1000000    | 228.90 MB    |
+### From Releases
+Currently there are no official releases built (soon™️). You can however make your own and deploy it where needed:
+- Clone the repository: `git clone https://github.com/Dahrkael/ExTracker.git && cd ExTracker`
+- run `MIX_ENV=prod mix release extracker` for Linux or `MIX_ENV=prod mix release extrackerw` for Windows
+- Find the release files inside the *_build/prod/rel/extracker* folder (if its a different machine make sure the OS and architecture is the same!)
+- Copy the folder to its final destination
+- If needed, modify the configuration in [releases/{VERSION}/runtime.exs](https://github.com/Dahrkael/ExTracker/blob/master/config/runtime.exs) to fit your needs
+- Run `bin/extracker start`
+
+### Docker
+For this method you can directly run the [available docker image](https://github.com/Dahrkael/ExTracker/pkgs/container/extracker/422008654?tag=latest): `docker run ghcr.io/dahrkael/extracker:latest`  
+or use it as part of docker-compose. Theres an [example compose file](https://github.com/Dahrkael/ExTracker/blob/master/docker-compose.yml) available.
+
+> [!NOTE]
+> Since modifying the [runtime.exs](https://github.com/Dahrkael/ExTracker/blob/master/config/runtime.exs) file to tune the configuration inside the container is not easy you can also configure it using **Environment Variables**, see the example compose file for the complete list.
+
+## Copyright and license
+
+Copyright (c) Dahrkael \<dahrkael at outlook dot com\>  
+Distributed under the terms of the Apache License, Version 2.0. Please refer to the [LICENSE file](https://github.com/Dahrkael/ExTracker/blob/master/LICENSE) in the repository root directory for details.
