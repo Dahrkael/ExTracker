@@ -1,4 +1,4 @@
-# ExTracker
+![ExTracker](.github/extracker-logo.png)
 The Bittorrent Tracker made in Elixir
 
 [![CI](https://github.com/Dahrkael/ExTracker/actions/workflows/build-on-push.yml/badge.svg)](https://github.com/Dahrkael/ExTracker/actions/workflows/build-on-push.yml)
