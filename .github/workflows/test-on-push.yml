@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Build
+name: Tests
 
 on:
   push:
@@ -20,8 +20,8 @@ jobs:
     name: Build and test with OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       matrix:
-        otp: ['25', '26', '27']
-        elixir: ['1.17', '1.18']
+        otp: ['27']
+        elixir: ['1.18']
     steps:
       - uses: actions/checkout@v4
       - name: Set up Elixir
@@ -31,5 +31,5 @@ jobs:
           elixir-version: ${{matrix.elixir}}
       - name: Install dependencies
         run: mix deps.get
-      - name: Compile project
-        run: mix compile
+      - name: Run tests
+        run: mix test
