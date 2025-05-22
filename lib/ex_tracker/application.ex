@@ -12,6 +12,9 @@ require Logger
     # override the configuration with whatever environment variables are set
     Extracker.Config.SystemEnvironment.load()
 
+    # move the MaxMind's license from extracker to locus
+    Application.put_env(:locus, :license_key, Application.get_env(:extracker, :geoip_license_key, ""))
+
     # print out the configuration to be sure what values are being used after reading everything
     IO.puts(ExTracker.console_about())
     print_current_config()

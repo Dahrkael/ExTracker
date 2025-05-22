@@ -36,10 +36,9 @@ if config_env() in [:prod] do
     backup_auto_path: "~/extracker.bck", # file path used for automatic backups
     backup_display_stats: true, # log how many peers and swarms are registered when a backup triggers
     geoip_enabled: false, # lookup and store the country of each peer
+    geoip_license_key: "", # MaxMind's license key. Required for the geoip features
     debug: false # enable extra debug logs and checks
 
   config :logger, level: :notice # log minimum level. info and debug may get spammy
-
-  config :locus, license_key: "" # MaxMind's license key. Required for the geoip features
 
 end

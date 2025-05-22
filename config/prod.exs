@@ -34,10 +34,8 @@ config :extracker,
   backup_auto_interval: (60 * 60 * 1000),
   backup_auto_path: "~/extracker.bck",
   backup_display_stats: true,
-  geoip_enabled: false
+  geoip_enabled: false,
+  geoip_license_key: ""
 
 config :logger,
   level: :notice
-
-config :locus,
-  license_key: ""
