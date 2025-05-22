@@ -21,6 +21,9 @@ jobs:
       id-token: write
       #
     steps:
+      - name: lowercase github.repository
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY@L}" >> ${GITHUB_ENV}
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Log in to the Container registry
