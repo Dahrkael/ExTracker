@@ -30,8 +30,8 @@ if config_env() in [:prod] do
     peer_cleanup_delay: (60 * 60 * 1_000), # milliseconds after a peer is considered stale and removed
     compress_lookups: true, # compressed lookup tables take less space while losing some performance
     named_lookups: false, # identify each swarm lookup table as "swarm_HASH" instead of just "swarm". Will exhaust the atom table at some point
-    backup_auto_enabled: true, # enable automatic backups creation
-    backup_auto_load_on_startup: true, # load the backup file specified in backup_auto_path when the tracker starts
+    backup_auto_enabled: false, # enable automatic backups of current swarms and peers creation
+    backup_auto_load_on_startup: false, # load the backup file specified in backup_auto_path when the tracker starts
     backup_auto_interval: (60 * 60 * 1000), # milliseconds between automatic backups
     backup_auto_path: "~/extracker.bck", # file path used for automatic backups
     backup_display_stats: true, # log how many peers and swarms are registered when a backup triggers
