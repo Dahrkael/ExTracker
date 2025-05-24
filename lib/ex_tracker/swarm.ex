@@ -21,7 +21,9 @@ defmodule ExTracker.Swarm do
 
     peer = {id, data}
     case :ets.insert_new(swarm, peer) do
-      true -> {:ok, data}
+      true ->
+        :telemetry.execute([:extracker, :peer, :added], %{}, %{ family: id.family})
+        {:ok, data}
       false -> {:error, "peer already exists"}
     end
   end
@@ -40,8 +42,8 @@ defmodule ExTracker.Swarm do
   # remove an existing peer from the specified swarm
   @spec remove_peer(swarm :: any(), id :: PeerID) :: :ok | :notfound
   def remove_peer(swarm, id) do
-    with [{_, _data}] <- :ets.lookup(swarm, id),
-         true <- :ets.delete(swarm, id) do
+    with [{_, _data}] <- :ets.lookup(swarm, id), true <- :ets.delete(swarm, id) do
+      :telemetry.execute([:extracker, :peer, :removed], %{}, %{ family: id.family})
       :ok
     else
       _ -> :notfound

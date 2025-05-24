@@ -37,6 +37,9 @@ if config_env() in [:prod] do
     backup_display_stats: true, # log how many peers and swarms are registered when a backup triggers
     geoip_enabled: false, # lookup and store the country of each peer
     geoip_license_key: "", # MaxMind's license key. Required for the geoip features
+    telemetry_enabled: false, # enable telemetry events gathering
+    telemetry_basic: false, # expose a '/tracker-stats.html' in the HTTP endpoint
+    telemetry_prometheus: true, # expose a Prometheus scrape endpoint at :9568/metrics
     debug: false # enable extra debug logs and checks
 
   config :logger, level: :notice # log minimum level. info and debug may get spammy

@@ -38,7 +38,11 @@ defmodule ExTracker.MixProject do
     [
       { :plug_cowboy, "~> 2.6" },
       {:bento, "~> 1.0"},
-      {:locus, "~> 2.3"}
+      {:locus, "~> 2.3"},
+      {:telemetry, "~> 1.3"},
+      {:telemetry_metrics, "~> 1.1"},
+      {:telemetry_poller, "~> 1.2"},
+      {:telemetry_metrics_prometheus, "~> 1.1"}
     ]
   end
 end

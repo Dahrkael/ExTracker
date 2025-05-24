@@ -165,16 +165,35 @@ defmodule ExTracker.UDP.Router do
   end
 
   defp process_packet(name, _socket, ip, 0, _packet) do
+    family = case tuple_size(ip) do
+      4 -> "inet"
+      8 -> "inet6"
+    end
+
+    :telemetry.execute([:extracker, :request], %{processing_time: 0}, %{endpoint: "udp", action: "connect", family: family})
+    :telemetry.execute([:extracker, :request, :error], %{}, %{endpoint: "udp", action: "connect", family: family})
     Logger.debug("#{name}: message from #{inspect(ip)} ignored because source port is zero")
     :ok
   end
 
   defp process_packet(name, socket, ip, port, packet) do
     start = System.monotonic_time(:microsecond)
-    process_message(socket, ip, port, packet)
+    {result, action} = process_message(socket, ip, port, packet)
     finish = System.monotonic_time(:microsecond)
 
     elapsed = finish - start
+
+    # send telemetry about this request
+    endpoint = "udp"
+    action_str = Atom.to_string(action)
+    family = case tuple_size(ip) do
+      4 -> "inet"
+      8 -> "inet6"
+    end
+
+    :telemetry.execute([:extracker, :request], %{processing_time: elapsed}, %{endpoint: endpoint, action: action_str, family: family})
+    :telemetry.execute([:extracker, :request, result], %{}, %{endpoint: endpoint, action: action_str, family: family})
+
     if elapsed < 1_000 do
       Logger.debug("#{name}: message processed in #{elapsed}µs")
     else
@@ -195,16 +214,16 @@ defmodule ExTracker.UDP.Router do
 
     case :gen_udp.send(socket, ip, port, response) do
       :ok ->
-        :ok
+        {:success, :connect}
       {:error, reason} ->
         Logger.error("[connect] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
-        :error
+        {:error, :connect}
     end
   end
 
   # announce request
   defp process_message(socket, ip, port, <<connection_id::integer-unsigned-64, @action_announce::integer-unsigned-32, transaction_id::integer-unsigned-32, data::binary>>) do
-    response = with :ok <- match_connection_id(connection_id, ip, port), # check connection id first
+    {ret, response} = with :ok <- match_connection_id(connection_id, ip, port), # check connection id first
     params <- read_announce(data), # convert the binary fields to a map for the processor to understand
     params <- handle_zero_port(params, port), # if port is zero, use the socket port
     {:ok, result} <- ExTracker.Processors.Announce.process(ip, params),
@@ -213,7 +232,7 @@ defmodule ExTracker.UDP.Router do
     {:ok, seeders} <- Map.fetch(result, "complete"),
     {:ok, peers} <- retrieve_announce_peers(result)
     do
-      <<
+      data = <<
         # 32-bit integer  transaction_id
         @action_announce::integer-unsigned-32,
         # 32-bit integer  transaction_id
@@ -229,31 +248,32 @@ defmodule ExTracker.UDP.Router do
         # 6 * N
         peers::binary
       >>
+      {:success, data}
     else
       # processor failure
       {:error, %{"failure reason" => reason}} ->
-        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>,  reason]
+        {:failure, [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>,  reason]}
       # general error
       {:error, reason} ->
-        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>,  reason]
+        {:failure, [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>,  reason]}
       # some response key is missing (shouldn't happen)
       :error ->
-        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, "internal error"]
+        {:failure, [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, "internal error"]}
     end
 
     # send a response in all (expected) cases
     case :gen_udp.send(socket, ip, port, response) do
       :ok ->
-        :ok
+        {ret, :announce}
       {:error, reason} ->
         Logger.error("[announce] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
-        :error
+        {:error, :announce}
     end
   end
 
   # scrape request
   defp process_message(socket, ip, port, <<connection_id::integer-unsigned-64, @action_scrape::integer-unsigned-32, transaction_id::integer-unsigned-32, data::binary>>) do
-    response =
+    {ret, response} =
       with :ok <- check_scrape_enabled(),
       :ok <- match_connection_id(connection_id, ip, port), # check connection id first
       hashes when hashes != 0 <- read_info_hashes(data) # then extract the hashes and make sure theres at least one
@@ -273,9 +293,9 @@ defmodule ExTracker.UDP.Router do
         _ -> false
       end) do
         {:error, %{"failure reason" => reason}} ->
-          [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]
+          {:failure, [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]}
         {:error, failure} ->
-          [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, failure]
+          {:failure, [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, failure]}
         nil ->
           # convert the results to binaries
           binaries = Enum.reduce(results, [], fn result, acc ->
@@ -292,31 +312,32 @@ defmodule ExTracker.UDP.Router do
             @action_scrape::integer-unsigned-32,
             transaction_id::integer-unsigned-32
           >>
-          IO.iodata_to_binary([header | binaries])
+          {:success, IO.iodata_to_binary([header | binaries])}
       end
     else
       # general error
       {:error, %{"failure reason" => reason}} ->
-        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]
+        {:failure, [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]}
       {:error, reason} ->
-        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]
+        {:failure, [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, reason]}
       # hashes list is empty
       [] ->
-        [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, "no info_hash provided"]
+        {:failure, [<<@action_error::integer-unsigned-32, transaction_id::integer-unsigned-32>>, "no info_hash provided"]}
     end
 
     # send a response in all (expected) cases
     case :gen_udp.send(socket, ip, port, response) do
       :ok ->
-        :ok
+        {ret, :scrape}
       {:error, reason} ->
         Logger.error("[scrape] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
-        :error
+        {:error, :scrape}
     end
   end
 
   # unexpected request
   defp process_message(_socket, _ip, _port, _data) do
+    {:error, :unknown}
   end
 
   defp check_scrape_enabled() do

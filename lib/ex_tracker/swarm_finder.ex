@@ -161,7 +161,9 @@ defmodule ExTracker.SwarmFinder do
     timestamp = System.system_time(:millisecond)
     :ets.insert(@swarms_table_name, {hash, table, timestamp, timestamp})
 
+    :telemetry.execute([:extracker, :swarm, :created], %{})
     Logger.debug("created table #{inspect(table_name)} for hash #{hash |> Base.encode16() |> String.downcase()}")
+
     table
   end
 
@@ -173,6 +175,7 @@ defmodule ExTracker.SwarmFinder do
         # delete the swarm table
         :ets.delete(table)
 
+        :telemetry.execute([:extracker, :swarm, :destroyed], %{})
         Logger.debug("destroyed swarm for hash #{hash |> Base.encode16() |> String.downcase()}")
       _ -> :notfound
     end

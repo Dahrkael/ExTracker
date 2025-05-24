@@ -1,7 +1,6 @@
 import Config
 
 config :extracker,
-  debug: false,
   compress_lookups: true,
   named_lookups: false,
   ipv4_enabled: true,
@@ -35,7 +34,11 @@ config :extracker,
   backup_auto_path: "~/extracker.bck",
   backup_display_stats: true,
   geoip_enabled: false,
-  geoip_license_key: ""
+  geoip_license_key: "",
+  telemetry_enabled: false,
+  telemetry_basic: false,
+  telemetry_prometheus: true,
+  debug: false
 
 config :logger,
   level: :notice

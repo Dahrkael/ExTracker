@@ -31,12 +31,9 @@ require Logger
       { ExTracker.Backup, {}}
     ]
 
-    optional_children = case Application.get_env(:extracker, :geoip_enabled) do
-      true ->
-        Logger.notice("GeoIP lookup enabled")
-        [:locus.loader_child_spec(:country, {:maxmind, "GeoLite2-Country"})]
-      _ -> []
-    end
+    optional_children = []
+      ++ get_geoip_children()
+      ++ get_telemetry_children()
 
     ipv4_optional_children = case Application.get_env(:extracker, :ipv4_enabled) do
       true ->
@@ -113,6 +110,24 @@ require Logger
           end
       end
       _ -> true
+    end
+  end
+
+  defp get_geoip_children() do
+    case Application.get_env(:extracker, :geoip_enabled) do
+      true ->
+        Logger.notice("GeoIP lookup enabled")
+        [:locus.loader_child_spec(:country, {:maxmind, "GeoLite2-Country"})]
+      _ -> []
+    end
+  end
+
+  defp get_telemetry_children() do
+    case Application.get_env(:extracker, :telemetry_enabled) do
+      true ->
+        Logger.notice("Telemetry enabled")
+        [{ ExTracker.Telemetry, {}}]
+      _ -> []
     end
   end
 
