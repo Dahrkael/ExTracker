@@ -48,15 +48,9 @@ defmodule ExTracker.HTTP.Router do
     |> send_resp(200, response)
   end
 
-  get "/about" do
-    conn
-    |> put_resp_content_type("text/html")
-    |> send_resp(200, ExTracker.web_about())
-  end
-
   match _ do
     conn
     |> put_resp_content_type("text/html")
-    |> send_resp( 404, "<h1>Not Found</h1>")
+    |> send_resp(200, ExTracker.web_about())
   end
 end
