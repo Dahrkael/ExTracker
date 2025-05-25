@@ -20,8 +20,8 @@ defmodule ExTracker.Telemetry do
   defp get_basic_children() do
     case Application.get_env(:extracker, :telemetry_basic) do
       true ->
-        Logger.notice("Telemetry Basic endpoint enabled (but not yet implemented)")
-        #[{Metrics.Telemetry.BasicReporter, metrics: metrics()}]
+        Logger.notice("Telemetry Basic endpoint enabled")
+        [{ExTracker.Telemetry.BasicReporter, metrics: metrics()}]
       _ -> []
     end
   end
