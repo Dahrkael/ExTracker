@@ -2,7 +2,7 @@ defmodule ExTracker.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
-require Logger
+  require Logger
 
   use Application
   alias ExTracker.Utils
