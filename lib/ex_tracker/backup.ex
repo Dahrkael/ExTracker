@@ -92,7 +92,14 @@ defmodule ExTracker.Backup do
         # merge the actual swarm data (all the peers) with the index data
         swarms_backup = swarm_entries
           |> Task.async_stream(fn {hash, table, created_at, _last_cleaned} ->
-            swarm_data = :ets.tab2list(table)
+            swarm_data = try do
+              :ets.tab2list(table)
+            rescue
+              e in ArgumentError ->
+                Logger.debug("Backup.save/1: #{Exception.message(e)}")
+                []
+            end
+
             {hash, swarm_data, created_at}
           end)
           |> Enum.map(&elem(&1, 1))
