@@ -36,6 +36,7 @@ config :extracker,
   geoip_enabled: false,
   geoip_license_key: "",
   telemetry_enabled: false,
+  telemetry_port: 9568,
   telemetry_basic: false,
   telemetry_prometheus: true,
   debug: false

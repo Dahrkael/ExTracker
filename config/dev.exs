@@ -33,10 +33,11 @@ config :extracker,
   backup_auto_interval: 60_000,
   backup_auto_path: "~/extracker.bck",
   backup_display_stats: true,
-  geoip_enabled: true,
+  geoip_enabled: false,
   geoip_license_key: "",
   telemetry_enabled: true,
-  telemetry_basic: false,
+  telemetry_port: 9568,
+  telemetry_basic: true,
   telemetry_prometheus: true,
   debug: true
 
