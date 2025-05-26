@@ -127,7 +127,9 @@ defmodule ExTracker.Application do
       true ->
         Logger.notice("Telemetry enabled")
         [{ ExTracker.Telemetry, {}}]
-      _ -> []
+      _ ->
+        Logger.notice("Telemetry disabled")
+        []
     end
   end
 
