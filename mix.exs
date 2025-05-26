@@ -42,7 +42,7 @@ defmodule ExTracker.MixProject do
       {:telemetry, "~> 1.3"},
       {:telemetry_metrics, "~> 1.1"},
       {:telemetry_poller, "~> 1.2"},
-      {:telemetry_metrics_prometheus, "~> 1.1"}
+      {:telemetry_metrics_prometheus_core, "~> 1.2"}
     ]
   end
 end

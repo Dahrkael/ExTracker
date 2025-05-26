@@ -9,12 +9,56 @@ defmodule ExTracker.Telemetry do
 
   def init(_arg) do
     children = [
-      {:telemetry_poller, measurements: poller_measurements(), period: 60_000, init_delay: 60_000},
+      {:telemetry_poller,
+        measurements: poller_measurements(),
+        period: 60_000,
+        init_delay: 10_000
+      }
     ]
+      ++ get_http_children()
       ++ get_basic_children()
       ++ get_prometheus_children()
 
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp get_http_children() do
+    v4 = case Application.get_env(:extracker, :ipv4_enabled) do
+      true ->
+        [Supervisor.child_spec({Plug.Cowboy,
+          scheme: :http,
+          plug: ExTracker.Telemetry.Router,
+          options: [
+            net: :inet,
+            ip: ExTracker.Utils.get_configured_ipv4(),
+            port: Application.get_env(:extracker, :telemetry_port),
+            compress: true,
+            ref: "telemetry_router_inet",
+          ]},
+          id: :telemetry_supervisor_inet
+        )]
+      false -> []
+    end
+
+    v6 = case Application.get_env(:extracker, :ipv6_enabled) do
+      true ->
+        [Supervisor.child_spec({Plug.Cowboy,
+          scheme: :http,
+          plug: ExTracker.Telemetry.Router,
+          options: [
+            net: :inet6,
+            ip: ExTracker.Utils.get_configured_ipv6(),
+            port: Application.get_env(:extracker, :telemetry_port),
+            compress: true,
+            ref: "telemetry_router_inet6",
+            ipv6_v6only: true
+          ]},
+          id: :telemetry_supervisor_inet6
+        )]
+      false -> []
+    end
+
+    v4 ++ v6
   end
 
   defp get_basic_children() do
@@ -30,7 +74,7 @@ defmodule ExTracker.Telemetry do
      case Application.get_env(:extracker, :telemetry_prometheus) do
       true ->
         Logger.notice("Telemetry Prometheus endpoint enabled")
-        [{TelemetryMetricsPrometheus, metrics: metrics()}]
+        [{TelemetryMetricsPrometheus.Core, metrics: metrics()}]
       _ -> []
     end
   end

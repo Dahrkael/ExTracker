@@ -19,13 +19,13 @@ defmodule ExTracker.Telemetry.BasicReporter do
     end
 
     defp handle_metric(%Telemetry.Metrics.Sum{} = metric, values, metadata) do
-      values |> Enum.each(fn {key, value} ->
+      values |> Enum.each(fn {_key, value} ->
         GenServer.cast(__MODULE__, {:sum, metric.name, value, metadata})
       end)
     end
 
     defp handle_metric(%Telemetry.Metrics.LastValue{} = metric, values, metadata) do
-      values |> Enum.each(fn {key, value} ->
+      values |> Enum.each(fn {_key, value} ->
         GenServer.cast(__MODULE__, {:last, metric.name, value, metadata})
       end)
     end
@@ -36,7 +36,7 @@ defmodule ExTracker.Telemetry.BasicReporter do
 
     def render_metrics_html() do
       metrics = GenServer.call(__MODULE__, {:get_metrics})
-      html = ""
+      "#{inspect(metrics)}"
     end
 
     #==========================================================================
@@ -54,7 +54,7 @@ defmodule ExTracker.Telemetry.BasicReporter do
         :telemetry.attach(id, event, &__MODULE__.handle_event/4, metrics)
       end
 
-      state = Enum.map(groups, fn {event, metrics} ->
+      state = Enum.map(groups, fn {_event, metrics} ->
         Enum.map(metrics, fn metric -> {metric.name, %{}} end)
       end)
       |> List.flatten()
@@ -73,8 +73,8 @@ defmodule ExTracker.Telemetry.BasicReporter do
     end
 
     @impl true
-    def handle_call({:get_metrics}, from, state) do
-      {:reply, state}
+    def handle_call({:get_metrics}, _from, state) do
+      {:reply, state, state}
     end
 
     @impl true
