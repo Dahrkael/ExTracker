@@ -23,8 +23,7 @@ defmodule ExTracker.Telemetry.Router do
 
   # prometheus scrape
   get "/prometheus" do
-    name = opts[:name]
-    metrics = TelemetryMetricsPrometheus.Core.scrape(name)
+    metrics = TelemetryMetricsPrometheus.Core.scrape()
 
     conn
     |> put_resp_content_type("text/plain")
