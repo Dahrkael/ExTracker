@@ -6,7 +6,7 @@ The Bittorrent Tracker made in Elixir
 [![CI](https://github.com/Dahrkael/ExTracker/actions/workflows/docker-release.yml/badge.svg)](https://github.com/Dahrkael/ExTracker/actions/workflows/docker-release.yml)
 
 👷‍♂️This project is a Work In Progress. While not ready for full industrial usage it does work.  
-There is a testing instance running at [extracker.dahrkael.net:6969](http://extracker.dahrkael.net:6969/about) with all current features enabled.
+There is a testing instance running at [extracker.dahrkael.net:6969](http://extracker.dahrkael.net:6969/about) with all current features enabled ([Live statistics](http://extracker.dahrkael.net:9568/tracker-stats.html)).
 
 ## Features
 Implementation Legend: 
