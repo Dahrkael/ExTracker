@@ -112,9 +112,9 @@ defmodule ExTracker.Telemetry do
       last_value("extracker.swarms.total.value"),
 
       # :telemetry.execute([:extracker, :bandwidth, :in], %{value: 0})
-      last_value("extracker.bandwidth.in.value"),
+      sum("extracker.bandwidth.in.value"),
       # :telemetry.execute([:extracker, :bandwidth, :out], %{value: 0})
-      last_value("extracker.bandwidth.out.value"),
+      sum("extracker.bandwidth.out.value"),
 
       #last_value("extracker.system.memory")
     ]
@@ -128,6 +128,7 @@ defmodule ExTracker.Telemetry do
       {ExTracker.Telemetry, :measure_peer_totals, []},
       {ExTracker.Telemetry, :measure_peer_seeders, []},
       {ExTracker.Telemetry, :measure_peer_leechers, []},
+      {ExTracker.Telemetry, :reset_bandwidth, []},
     ]
   end
 
@@ -179,5 +180,10 @@ defmodule ExTracker.Telemetry do
   def measure_swarms_totals() do
     total = ExTracker.SwarmFinder.get_swarm_count()
     :telemetry.execute([:extracker, :swarms, :total], %{value: total})
+  end
+
+  def reset_bandwidth() do
+    :telemetry.execute([:extracker, :bandwidth, :in], %{value: 0})
+    :telemetry.execute([:extracker, :bandwidth, :out], %{value: 0})
   end
 end

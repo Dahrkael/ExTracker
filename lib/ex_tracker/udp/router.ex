@@ -111,6 +111,7 @@ defmodule ExTracker.UDP.Router do
     # delegate message handling to a Task under the associated supervisor
     supervisor = ExTracker.UDP.Supervisor.get_task_supervisor_name(Process.get(:index), Process.get(:family))
     Task.Supervisor.start_child(supervisor, fn ->
+      :telemetry.execute([:extracker, :bandwidth, :in], %{value: byte_size(data)})
       process_packet(Process.get(:name), socket, ip, port, data)
     end)
 
@@ -212,8 +213,10 @@ defmodule ExTracker.UDP.Router do
       generate_connection_id(ip, port)::integer-unsigned-64
     >>
 
+    response = IO.iodata_to_binary(response)
     case :gen_udp.send(socket, ip, port, response) do
       :ok ->
+        :telemetry.execute([:extracker, :bandwidth, :out], %{value: byte_size(response)})
         {:success, :connect}
       {:error, reason} ->
         Logger.error("[connect] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
@@ -262,8 +265,10 @@ defmodule ExTracker.UDP.Router do
     end
 
     # send a response in all (expected) cases
+    response = IO.iodata_to_binary(response)
     case :gen_udp.send(socket, ip, port, response) do
       :ok ->
+        :telemetry.execute([:extracker, :bandwidth, :out], %{value: byte_size(response)})
         {ret, :announce}
       {:error, reason} ->
         Logger.error("[announce] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
@@ -326,8 +331,10 @@ defmodule ExTracker.UDP.Router do
     end
 
     # send a response in all (expected) cases
+    response = IO.iodata_to_binary(response)
     case :gen_udp.send(socket, ip, port, response) do
       :ok ->
+        :telemetry.execute([:extracker, :bandwidth, :out], %{value: byte_size(response)})
         {ret, :scrape}
       {:error, reason} ->
         Logger.error("[scrape] udp send failed. reason: #{inspect(reason)} ip: #{inspect(ip)} port: #{inspect(port)} response: #{inspect(response)}")
