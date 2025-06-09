@@ -1,6 +1,7 @@
 defmodule ExTracker.Telemetry.BasicReporter do
     use GenServer
     require Logger
+    alias ExTracker.Utils
 
     def start_link(args) do
       GenServer.start_link(__MODULE__, args, name: __MODULE__)
@@ -36,7 +37,155 @@ defmodule ExTracker.Telemetry.BasicReporter do
 
     def render_metrics_html() do
       metrics = GenServer.call(__MODULE__, {:get_metrics})
-      "#{inspect(metrics)}"
+
+      total_swarms = get_in(metrics, [[:extracker, :swarms, :total, :value], :default]) || 0
+      bandwidth_in = get_in(metrics, [[:extracker, :bandwidth, :in, :value], :default, :rate]) || 0
+      bandwidth_out = get_in(metrics, [[:extracker, :bandwidth, :out, :value], :default, :rate]) || 0
+
+      peers_total_all = get_in(metrics, [[:extracker, :peers, :total, :value], %{family: "all"}]) || 0
+      peers_total_ipv4 = get_in(metrics, [[:extracker, :peers, :total, :value], %{family: "inet"}]) || 0
+      peers_total_ipv6 = get_in(metrics, [[:extracker, :peers, :total, :value], %{family: "inet6"}]) || 0
+      peers_seeders_all = get_in(metrics, [[:extracker, :peers, :seeders, :value], %{family: "all"}]) || 0
+      peers_seeders_ipv4 = get_in(metrics, [[:extracker, :peers, :seeders, :value], %{family: "inet"}]) || 0
+      peers_seeders_ipv6 = get_in(metrics, [[:extracker, :peers, :seeders, :value], %{family: "inet6"}]) || 0
+      peers_leechers_all = get_in(metrics, [[:extracker, :peers, :leechers, :value], %{family: "all"}]) || 0
+      peers_leechers_ipv4 = get_in(metrics, [[:extracker, :peers, :leechers, :value], %{family: "inet"}]) || 0
+      peers_leechers_ipv6 = get_in(metrics, [[:extracker, :peers, :leechers, :value], %{family: "inet6"}]) || 0
+
+      udp_connect_rate_ipv4 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet", action: "connect", endpoint: "udp"}, :rate]) || 0
+      udp_connect_rate_ipv6 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet6", action: "connect", endpoint: "udp"}, :rate]) || 0
+      udp_connect_rate_all = udp_connect_rate_ipv4 + udp_connect_rate_ipv6
+
+      udp_announce_rate_ipv4 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet", action: "announce", endpoint: "udp"}, :rate]) || 0
+      udp_announce_rate_ipv6 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet6", action: "announce", endpoint: "udp"}, :rate]) || 0
+      udp_announce_rate_all = udp_announce_rate_ipv4 + udp_announce_rate_ipv6
+
+      udp_scrape_rate_ipv4 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet", action: "scrape", endpoint: "udp"}, :rate]) || 0
+      udp_scrape_rate_ipv6 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet6", action: "scrape", endpoint: "udp"}, :rate]) || 0
+      udp_scrape_rate_all = udp_scrape_rate_ipv4 + udp_scrape_rate_ipv6
+
+      udp_failure_rate_all =
+        Map.get(metrics, [:extracker, :request, :failure, :count], %{})
+        |> Enum.filter(fn {key, value} -> key[:endpoint] == "udp" end)
+        |> Enum.map(fn {key, value} -> value[:rate] end)
+        |> Enum.sum()
+
+      udp_failure_rate_ipv4 =
+        Map.get(metrics, [:extracker, :request, :failure, :count], %{})
+        |> Enum.filter(fn {key, value} -> key[:endpoint] == "udp" and key[:family] == "inet" end)
+        |> Enum.map(fn {key, value} -> value[:rate] end)
+        |> Enum.sum()
+
+      udp_failure_rate_ipv6 =
+        Map.get(metrics, [:extracker, :request, :failure, :count], %{})
+        |> Enum.filter(fn {key, value} -> key[:endpoint] == "udp" and key[:family] == "inet6" end)
+        |> Enum.map(fn {key, value} -> value[:rate] end)
+        |> Enum.sum()
+
+      html = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ExTracker Statistics</title>
+  <style>
+    .cyan { color: cyan; text-shadow: 1px 1px 2px black; }
+    .fuchsia { color: fuchsia; text-shadow: 1px 1px 2px black; }
+    table { border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h1><span class="fuchsia">Ex</span><span class="cyan">Tracker</span> Statistics</h1>
+
+  <table>
+    <thead><tr><th colspan="2">Swarms (Torrents)</th></tr></thead>
+    <tbody>
+      <tr><td>Current total</td><td>#{total_swarms}</td></tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead><tr><th colspan="4">Peers</th></tr></thead>
+    <thead><tr><th>Type</th><th>Total</th><th>IPv4</th><th>IPv6</th></tr></thead>
+    <tbody>
+    <tr>
+        <td>All</td>
+        <td>#{peers_total_all}</td>
+        <td>#{peers_total_ipv4}</td>
+        <td>#{peers_total_ipv6}</td>
+      </tr>
+      <tr>
+        <td>Seeders</td>
+        <td>#{peers_seeders_all}</td>
+        <td>#{peers_seeders_ipv4}</td>
+        <td>#{peers_seeders_ipv6}</td>
+      </tr>
+      <tr>
+        <td>Leechers</td>
+        <td>#{peers_leechers_all}</td>
+        <td>#{peers_leechers_ipv4}</td>
+        <td>#{peers_leechers_ipv6}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead><tr><th colspan="4">UDP Responses (per second)</th></tr></thead>
+    <thead><tr><th>Action</th><th>Total</th><th>IPv4</th><th>IPv6</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>connect</td>
+        <td>#{trunc(udp_connect_rate_all)}</td>
+        <td>#{trunc(udp_connect_rate_ipv4)}</td>
+        <td>#{trunc(udp_connect_rate_ipv6)}</td>
+      </tr>
+      <tr>
+        <td>announce</td>
+        <td>#{trunc(udp_announce_rate_all)}</td>
+        <td>#{trunc(udp_announce_rate_ipv4)}</td>
+        <td>#{trunc(udp_announce_rate_ipv6)}</td>
+      </tr>
+      <tr>
+        <td>scrape</td>
+        <td>#{trunc(udp_scrape_rate_all)}</td>
+        <td>#{trunc(udp_scrape_rate_ipv4)}</td>
+        <td>#{trunc(udp_scrape_rate_ipv6)}</td>
+      </tr>
+
+      <tr>
+        <td>failure</td>
+        <td>#{trunc(udp_failure_rate_all)}</td>
+        <td>#{trunc(udp_failure_rate_ipv4)}</td>
+        <td>#{trunc(udp_failure_rate_ipv6)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th colspan="2">Bandwidth (per second)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>RX (In)</td>
+        <td>#{Utils.format_bits_as_string(bandwidth_in)}</td>
+      </tr>
+      <tr>
+        <td>TX (Out)</td>
+        <td>#{Utils.format_bits_as_string(bandwidth_out)}</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>
+"""
+
+      html
+      #"#{inspect(metrics)}"
     end
 
     #==========================================================================
@@ -81,13 +230,26 @@ defmodule ExTracker.Telemetry.BasicReporter do
     def handle_cast({:counter, metric, metadata}, state) do
       data = Map.get(state, metric)
       key = get_target_key(metadata)
+      now  = System.monotonic_time(:second)
 
-      {new, updated} = Map.get_and_update(data, key, fn current ->
-        new = if current == nil, do: 1, else: current + 1
-        {current, new}
-      end)
+      new_entry = case Map.get(data, key) do
+        nil ->
+          %{prev: 0, value: 1, ts: now, rate: 0}
+        %{prev: prev, value: current, ts: ts, rate: _rate} = entry ->
+          new_value = current + 1
+          elapsed = now - ts
+          if elapsed >= 1 do
+            delta = new_value - prev
+            rate = delta / elapsed
+            %{prev: current, value: new_value, ts: now, rate: rate}
+          else
+            Map.put(entry, :value, new_value)
+          end
+      end
 
-      Logger.debug("counter updated: #{inspect(metric)}/#{inspect(metadata)} - value: #{new}")
+    updated = Map.put(data, key, new_entry)
+
+      Logger.debug("counter updated: #{inspect(metric)}/#{inspect(metadata)} - value: #{new_entry[:value]}")
       {:noreply, Map.put(state, metric, updated)}
     end
 
@@ -95,13 +257,26 @@ defmodule ExTracker.Telemetry.BasicReporter do
     def handle_cast({:sum, metric, value, metadata}, state) do
       data = Map.get(state, metric)
       key = get_target_key(metadata)
+      now  = System.monotonic_time(:second)
 
-      {new, updated} = Map.get_and_update(data, key, fn current ->
-        new = if current == nil, do: value, else: current + value
-        {current, new}
-      end)
+      new_entry = case Map.get(data, key) do
+        nil ->
+          %{prev: 0, value: value, ts: now, rate: 0}
+        %{prev: prev, value: current, ts: ts, rate: _rate} = entry ->
+          new_value = current + value
+          elapsed = now - ts
+          if elapsed >= 1 do
+            delta = new_value - prev
+            rate = delta / elapsed
+            %{prev: current, value: new_value, ts: now, rate: rate}
+          else
+            Map.put(entry, :value, new_value)
+          end
+      end
 
-      Logger.debug("sum updated: #{inspect(metric)}/#{inspect(metadata)} - value: #{new}")
+      updated = Map.put(data, key, new_entry)
+
+      Logger.debug("sum updated: #{inspect(metric)}/#{inspect(metadata)} - value: #{new_entry[:value]}")
       {:noreply, Map.put(state, metric, updated)}
     end
 

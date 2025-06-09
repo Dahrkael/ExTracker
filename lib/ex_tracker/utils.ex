@@ -10,6 +10,14 @@ defmodule ExTracker.Utils do
     String.downcase(Base.encode16(hash))
   end
 
+  def format_bits_as_string(bits) when is_integer(bits) or is_float(bits) do
+    cond do
+      bits < 1_000 -> "#{(bits)} bits"
+      bits < 1_000_000 -> "#{(bits / 1_000)} Kilobits"
+      true -> "#{(bits / 1_000_000)} Megabits"
+    end
+  end
+
   def ip_to_bytes(ip) when is_tuple(ip) and tuple_size(ip) == 4 do
     ip |> Tuple.to_list() |> :binary.list_to_bin()
   end
