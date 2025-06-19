@@ -201,7 +201,7 @@ defmodule ExTracker.Cmd do
       # create random hash
       hash = :crypto.strong_rand_bytes(20)
       # create swarm
-      swarm = ExTracker.SwarmFinder.find_or_create(hash)
+      {:ok, swarm} = ExTracker.SwarmFinder.find_or_create(hash)
       # fill it with fake peers
       Enum.map(1..peer_count, fn _p ->
         # create random peer data

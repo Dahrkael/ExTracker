@@ -42,8 +42,7 @@ defmodule ExTracker.Processors.Announce do
   end
 
   defp get_swarm(hash) do
-    swarm = ExTracker.SwarmFinder.find_or_create(hash)
-    {:ok, swarm}
+    ExTracker.SwarmFinder.find_or_create(hash)
   end
 
   defp get_peer(swarm, client) do

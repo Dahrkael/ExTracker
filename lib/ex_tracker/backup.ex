@@ -143,7 +143,7 @@ defmodule ExTracker.Backup do
         swarms
         |> Task.async_stream(fn {hash, swarm_data, created_at} ->
           # recreate the swarm table
-          swarm = SwarmFinder.find_or_create(hash)
+          {:ok, swarm} = SwarmFinder.find_or_create(hash) # FIXME this may fail if control list changes
           # put the correct creation date
           SwarmFinder.restore_creation_timestamp(hash, created_at)
           # insert all the missing peers

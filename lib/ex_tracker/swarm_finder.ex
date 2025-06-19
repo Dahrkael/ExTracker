@@ -21,7 +21,7 @@ defmodule ExTracker.SwarmFinder do
 
   def find_or_create(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _created_at, _last_cleaned}] -> table
+      [{^hash, table, _created_at, _last_cleaned}] -> {:ok, table}
       _ -> create(hash)
     end
   end
@@ -90,11 +90,40 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
+  defp load_access_list() do
+    path = Application.get_env(:extracker, :hash_control_file) |> Path.expand()
+    # TODO could use File.Stream! with proper error handling if the list grows too big
+    case File.read(path) do
+      {:ok, data} ->
+        access_list = data
+        |> String.split("\n", trim: true)
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+        |> MapSet.new()
+
+        Logger.notice("loaded access list from file #{path} containing #{MapSet.size(access_list)} hashes")
+        access_list
+      {:error, error} ->
+        # if the access list fails to load and hash control is not enabled then silently ignore it
+        mode = Application.get_env(:extracker, :hash_control, false)
+        if Enum.member?(["whitelist", "blacklist"], mode) do
+            Logger.error("failed to load access list from file '#{path}': #{:file.format_error(error)}")
+        end
+
+        MapSet.new()
+    end
+  end
+
   @impl true
   def init(_args) do
     ets_args = [:set, :named_table, :protected] ++ get_ets_compression_arg()
     :ets.new(@swarms_table_name, ets_args)
-    {:ok, {}}
+
+    state = %{
+      access_list: load_access_list()
+    }
+
+    {:ok, state}
   end
 
   @impl true
@@ -103,8 +132,15 @@ defmodule ExTracker.SwarmFinder do
 
   @impl true
   def handle_call({:create, hash}, _from, state) do
-    table = create_swarm_checked(hash)
-    {:reply, table, state}
+    result = case check_allowed_hash(state.access_list, hash) do
+      true ->
+        table = create_swarm_checked(hash)
+        {:ok, table}
+      false ->
+        {:error, :hash_not_allowed}
+    end
+
+    {:reply, result, state}
   end
 
   @impl true
@@ -132,11 +168,17 @@ defmodule ExTracker.SwarmFinder do
     {:noreply, state}
   end
 
-
-
   @impl true
   def handle_info(_msg, state) do
     {:noreply, state}
+  end
+
+  defp check_allowed_hash(access_list, hash) do
+    case Application.get_env(:extracker, :hash_control, "none") do
+      "whitelist" -> MapSet.member?(access_list, hash)
+      "blacklist" -> !MapSet.member?(access_list, hash)
+      _ -> true
+    end
   end
 
   # create a table for the new swarm if it doesnt already exist
