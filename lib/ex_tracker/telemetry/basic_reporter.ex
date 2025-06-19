@@ -66,20 +66,20 @@ defmodule ExTracker.Telemetry.BasicReporter do
 
       udp_failure_rate_all =
         Map.get(metrics, [:extracker, :request, :failure, :count], %{})
-        |> Enum.filter(fn {key, value} -> key[:endpoint] == "udp" end)
-        |> Enum.map(fn {key, value} -> value[:rate] end)
+        |> Enum.filter(fn {key, _value} -> key[:endpoint] == "udp" end)
+        |> Enum.map(fn {_key, value} -> value[:rate] end)
         |> Enum.sum()
 
       udp_failure_rate_ipv4 =
         Map.get(metrics, [:extracker, :request, :failure, :count], %{})
-        |> Enum.filter(fn {key, value} -> key[:endpoint] == "udp" and key[:family] == "inet" end)
-        |> Enum.map(fn {key, value} -> value[:rate] end)
+        |> Enum.filter(fn {key, _value} -> key[:endpoint] == "udp" and key[:family] == "inet" end)
+        |> Enum.map(fn {_key, value} -> value[:rate] end)
         |> Enum.sum()
 
       udp_failure_rate_ipv6 =
         Map.get(metrics, [:extracker, :request, :failure, :count], %{})
-        |> Enum.filter(fn {key, value} -> key[:endpoint] == "udp" and key[:family] == "inet6" end)
-        |> Enum.map(fn {key, value} -> value[:rate] end)
+        |> Enum.filter(fn {key, _value} -> key[:endpoint] == "udp" and key[:family] == "inet6" end)
+        |> Enum.map(fn {_key, value} -> value[:rate] end)
         |> Enum.sum()
 
       html = """
