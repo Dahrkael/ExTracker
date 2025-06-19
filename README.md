@@ -40,7 +40,7 @@ Implementation Legend:
 - ✅ HTTPS support
 - ✅ Database backups to disk
 - ❌ WebTorrent
-- 🔲 Infohash whitelist/blacklist
+- 🔰 Infohash whitelist/blacklist
 - 🔰 Peer management (interval enforcement, cleanup, banning, etc)
 - 🔰 Metrics
 - **Feel free to propose features in the [Issues](https://github.com/Dahrkael/ExTracker/issues)**
