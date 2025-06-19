@@ -43,6 +43,7 @@ Implementation Legend:
 - 🔰 Infohash whitelist/blacklist
 - 🔰 Peer management (interval enforcement, cleanup, banning, etc)
 - 🔰 Metrics
+- 🔰 GeoIP support (statistics, peer restrictions)
 - **Feel free to propose features in the [Issues](https://github.com/Dahrkael/ExTracker/issues)**
 
 ## Setup
