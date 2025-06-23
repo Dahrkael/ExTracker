@@ -87,6 +87,7 @@ defmodule ExTracker.Telemetry.BasicReporter do
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv=refresh content=60>
   <title>ExTracker Statistics</title>
   <style>
     .cyan { color: cyan; text-shadow: 1px 1px 2px black; }
