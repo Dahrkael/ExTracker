@@ -15,6 +15,11 @@ defmodule ExTracker.Types.ScrapeResponse do
   end
 
   def generate_failure(reason) do
-    %{ "failure reason" => reason }
+    text = cond do
+      is_atom(reason) -> Atom.to_string(reason)
+      true -> reason
+    end
+
+    %{ "failure reason" => text }
   end
 end
