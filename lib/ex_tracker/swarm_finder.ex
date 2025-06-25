@@ -1,5 +1,5 @@
 # ExTracker.SwarmFinder is the process responsible for keeping track of all the swarms (torrents) using ETS
-# tables are created and looked up here but the actual updates happen in ExTracker.Swarm
+# tables are created and looked up here but the actual updates happen in ExTracker.Swarm<
 defmodule ExTracker.SwarmFinder do
 
   # ETS table to store the index for every swarm table containing the actual data
@@ -90,39 +90,12 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
-  defp load_access_list() do
-    path = Application.get_env(:extracker, :hash_control_file) |> Path.expand()
-    # TODO could use File.Stream! with proper error handling if the list grows too big
-    case File.read(path) do
-      {:ok, data} ->
-        access_list = data
-        |> String.split("\n", trim: true)
-        |> Enum.map(&String.trim/1)
-        |> Enum.reject(&(&1 == ""))
-        |> MapSet.new()
-
-        Logger.notice("loaded access list from file #{path} containing #{MapSet.size(access_list)} hashes")
-        access_list
-      {:error, error} ->
-        # if the access list fails to load and hash control is not enabled then silently ignore it
-        mode = Application.get_env(:extracker, :hash_control, false)
-        if Enum.member?(["whitelist", "blacklist"], mode) do
-            Logger.error("failed to load access list from file '#{path}': #{:file.format_error(error)}")
-        end
-
-        MapSet.new()
-    end
-  end
-
   @impl true
   def init(_args) do
     ets_args = [:set, :named_table, :protected] ++ get_ets_compression_arg()
     :ets.new(@swarms_table_name, ets_args)
 
-    state = %{
-      access_list: load_access_list()
-    }
-
+    state = %{}
     {:ok, state}
   end
 
@@ -132,7 +105,7 @@ defmodule ExTracker.SwarmFinder do
 
   @impl true
   def handle_call({:create, hash}, _from, state) do
-    result = case check_allowed_hash(state.access_list, hash) do
+    result = case check_allowed_hash(hash) do
       true ->
         table = create_swarm_checked(hash)
         {:ok, table}
@@ -163,7 +136,7 @@ defmodule ExTracker.SwarmFinder do
   def handle_cast({:restore, hash, created_at}, state) do
     case :ets.update_element(@swarms_table_name, hash, [{3, created_at}]) do
       true -> :ok
-      false -> Logger.warning("failed to updated creation time for entry #{Utils.hash_to_string(hash)}")
+      false -> Logger.warning("failed to update creation time for entry #{Utils.hash_to_string(hash)}")
     end
     {:noreply, state}
   end
@@ -173,10 +146,10 @@ defmodule ExTracker.SwarmFinder do
     {:noreply, state}
   end
 
-  defp check_allowed_hash(access_list, hash) do
+  defp check_allowed_hash(hash) do
     case Application.get_env(:extracker, :hash_control, "none") do
-      "whitelist" -> MapSet.member?(access_list, hash)
-      "blacklist" -> !MapSet.member?(access_list, hash)
+      "whitelist" -> ExTracker.Accesslist.contains(:whitelist_hashes, hash)
+      "blacklist" -> !ExTracker.Accesslist.contains(:blacklist_hashes, hash)
       _ -> true
     end
   end

@@ -34,6 +34,7 @@ defmodule ExTracker.Application do
     optional_children = []
       ++ get_geoip_children()
       ++ get_telemetry_children()
+      ++ get_accesslist_children()
 
     ipv4_optional_children = case Application.get_env(:extracker, :ipv4_enabled) do
       true ->
@@ -129,6 +130,21 @@ defmodule ExTracker.Application do
         [{ ExTracker.Telemetry, {}}]
       _ ->
         Logger.notice("Telemetry disabled")
+        []
+    end
+  end
+
+  defp get_accesslist_children() do
+    file = Application.get_env(:extracker, :hash_control_file, "")
+    case Application.get_env(:extracker, :hash_control, "none") do
+      "whitelist" ->
+        Logger.notice("Hash Whitelist enabled")
+        [{ ExTracker.Accesslist, [name: :whitelist_hashes, file: file]}]
+      "blacklist" ->
+        Logger.notice("Hash Blacklist enabled")
+        [{ ExTracker.Accesslist, [name: :blacklist_hashes, file: file]}]
+      _ ->
+        Logger.notice("Accesslist disabled")
         []
     end
   end
