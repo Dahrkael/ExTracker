@@ -135,18 +135,25 @@ defmodule ExTracker.Application do
   end
 
   defp get_accesslist_children() do
-    file = Application.get_env(:extracker, :hash_control_file, "")
-    case Application.get_env(:extracker, :hash_control, "none") do
-      "whitelist" ->
-        Logger.notice("Hash Whitelist enabled")
-        [{ ExTracker.Accesslist, [name: :whitelist_hashes, file: file]}]
-      "blacklist" ->
-        Logger.notice("Hash Blacklist enabled")
-        [{ ExTracker.Accesslist, [name: :blacklist_hashes, file: file]}]
-      _ ->
-        Logger.notice("Accesslist disabled")
-        []
-    end
+    [:hashes, :useragents]
+    |> Enum.map(fn name ->
+      title = Atom.to_string(name) |> String.capitalize()
+      file = Application.get_env(:extracker, :"restrict_#{name}_file", "")
+      case Application.get_env(:extracker, :"restrict_#{name}", false) do
+        "whitelist" ->
+          Logger.notice("#{title} Whitelist enabled")
+          id = :"whitelist_#{name}"
+          [Supervisor.child_spec({ExTracker.Accesslist, [name: id, file: file]}, id: id)]
+        "blacklist" ->
+          Logger.notice("#{title} Blacklist enabled")
+          id = :"blacklist_#{name}"
+          [Supervisor.child_spec({ExTracker.Accesslist, [name: id, file: file]}, id: id)]
+        _ ->
+          Logger.notice("#{title} Accesslist disabled")
+          []
+      end
+    end)
+    |> List.flatten()
   end
 
   defp get_http_children(family) do
