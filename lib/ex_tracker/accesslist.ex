@@ -42,8 +42,8 @@ defmodule ExTracker.Accesslist do
     state = %{table: table}
 
     case Keyword.get(args, :file) do
-      path -> load_file(path, state)
       nil -> :ok
+      path -> load_file(path, state)
     end
 
     {:ok, state}
