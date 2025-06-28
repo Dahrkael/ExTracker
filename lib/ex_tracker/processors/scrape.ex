@@ -9,10 +9,11 @@ defmodule ExTracker.Processors.Scrape do
       {:ok, request} ->
         with {:ok, swarm} <- get_swarm(request.info_hash), # find swarm based on info_hash
         {:ok, seeders} <- get_total_seeders(swarm), # get number of seeders for this swarm
+        {:ok, partial_seeders} <- get_total_partial_seeders(swarm), # get number of partial seeders for this swarm
         {:ok, leechers} <- get_total_leechers(swarm), # get number of leechers for this swarm
         {:ok, downloads} <- get_total_downloads(swarm) # get absolute number of downloads for this swarm
         do
-          generate_success_response(seeders, leechers, downloads)
+          generate_success_response(seeders, partial_seeders, leechers, downloads)
         else
           {:error, error} -> generate_failure_response(error)
           _ -> {:error, "unknown internal error"}
@@ -33,6 +34,10 @@ defmodule ExTracker.Processors.Scrape do
     {:ok, ExTracker.Swarm.get_seeder_count(swarm, :all)}
   end
 
+  def get_total_partial_seeders(swarm) do
+    {:ok, ExTracker.Swarm.get_partial_seeder_count(swarm, :all)}
+  end
+
   def get_total_leechers(swarm) do
     {:ok, ExTracker.Swarm.get_leecher_count(swarm, :all)}
   end
@@ -41,8 +46,8 @@ defmodule ExTracker.Processors.Scrape do
     {:ok, 0} #TODO
   end
 
-  defp generate_success_response(seeders, leechers, downloads) do
-    response = ScrapeResponse.generate_success(seeders, leechers, downloads)
+  defp generate_success_response(seeders, partial_seeders, leechers, downloads) do
+    response = ScrapeResponse.generate_success(seeders, partial_seeders, leechers, downloads)
     {:ok, response}
   end
 

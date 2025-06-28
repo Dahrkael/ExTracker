@@ -91,11 +91,17 @@ defmodule ExTracker.Swarm do
     get_seeders(swarm, :all, family, false) |> length()
   end
 
+  # get the total number of partial seeders registered in the specified swarm
+  def get_partial_seeder_count(swarm, family) do
+    get_partial_seeders(swarm, :all, family, false) |> length()
+  end
+
   # return a list of all the peers registered in the swarm  up to 'count', optionally includes their associated data
   def get_peers(swarm, count, type, family, include_data) do
     spec_condition_type = case type do
       :leechers -> {:>, {:map_get, :left, :"$2"}, 0} # data.left > 0
       :seeders -> {:==, {:map_get, :left, :"$2"}, 0} # data.left == 0
+      :partial_seeders -> {:==, {:map_get, :last_event, :"$2"}, :paused} # data.last_event == :paused
       :all -> nil # no condition
     end
 
@@ -145,6 +151,10 @@ defmodule ExTracker.Swarm do
 
   def get_seeders(swarm, count, family, include_data) do
     get_peers(swarm, count, :seeders, family, include_data)
+  end
+
+  def get_partial_seeders(swarm, count, family, include_data) do
+    get_peers(swarm, count, :partial_seeders, family, include_data)
   end
 
   def get_stale_peers(swarm, timestamp) do
