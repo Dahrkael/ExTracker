@@ -5,6 +5,7 @@ defmodule ExTracker.HTTP.Router do
   @assets_folder Application.app_dir(:extracker, "priv/static/assets")
 
   plug Plug.Logger
+  plug ExTracker.Telemetry.Plug
   plug Plug.Static, at: "/assets", from: @assets_folder
   plug :match
   #plug Plug.Parsers, parsers: [:urlencoded, :multipart], pass: ["*/*"], validate_utf8: false
@@ -13,15 +14,18 @@ defmodule ExTracker.HTTP.Router do
 
   # client announcements
   get "/announce" do
-    {_status, result} = case check_allowed_useragent(conn) do
+    {status, result} = case check_allowed_useragent(conn) do
       true ->
         ExTracker.Processors.Announce.process(conn.remote_ip, conn.query_params)
       false ->
-        {200, %{ "failure reason" => "User-Agent not allowed"}}
+        {403, %{ "failure reason" => "User-Agent not allowed"}}
     end
 
     # bencoded response
     response = result |> Bento.encode!() |> IO.iodata_to_binary()
+
+    # send telemetry about this request
+    send_telemetry(conn.remote_ip, "announce", status, byte_size(response))
 
     conn
     |> put_resp_content_type("application/octet-stream", nil)
@@ -32,7 +36,7 @@ defmodule ExTracker.HTTP.Router do
   end
 
   get "/scrape" do
-    {_status, result} =
+    {status, result} =
       case Application.get_env(:extracker, :scrape_enabled) do
         true ->
           case check_allowed_useragent(conn) do
@@ -42,14 +46,17 @@ defmodule ExTracker.HTTP.Router do
               # this probably needs a custom query_string parser at the router level
               ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
             false ->
-              {200, %{ "failure reason" => "User-Agent not allowed"}}
+              {403, %{ "failure reason" => "User-Agent not allowed"}}
           end
       _ ->
-        {200, %{"failure reason" => "scraping is disabled"}}
+        {404, %{"failure reason" => "scraping is disabled"}}
     end
 
     # bencoded response
     response = result |> Bento.encode!() |> IO.iodata_to_binary()
+
+    # send telemetry about this request
+    send_telemetry(conn.remote_ip, "scrape", status, byte_size(response))
 
     conn
     |> put_resp_content_type("application/octet-stream", nil)
@@ -62,6 +69,28 @@ defmodule ExTracker.HTTP.Router do
     conn
     |> put_resp_content_type("text/html")
     |> send_resp(200, ExTracker.web_about())
+  end
+
+  defp send_telemetry(ip, action, status, response_size) do
+    # send outcoming bandwidth and the request result here instead of ExTracker.Telemetry.Plug
+    # because we don't know the result and response size until the very end
+    endpoint = "http"
+
+    result = case status do
+      :ok -> :success
+      :error -> :failure
+      200..299 -> :success
+      400..499 -> :failure
+      500..599 -> :error
+    end
+
+    family = case tuple_size(ip) do
+      4 -> "inet"
+      8 -> "inet6"
+    end
+
+    :telemetry.execute([:extracker, :request, result], %{}, %{endpoint: endpoint, action: action, family: family})
+    :telemetry.execute([:extracker, :bandwidth, :out], %{value: response_size})
   end
 
   defp get_useragent(conn) do

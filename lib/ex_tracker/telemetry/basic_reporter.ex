@@ -52,6 +52,32 @@ defmodule ExTracker.Telemetry.BasicReporter do
       peers_leechers_ipv4 = get_in(metrics, [[:extracker, :peers, :leechers, :value], %{family: "inet"}]) || 0
       peers_leechers_ipv6 = get_in(metrics, [[:extracker, :peers, :leechers, :value], %{family: "inet6"}]) || 0
 
+      http_announce_rate_ipv4 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet", action: "announce", endpoint: "http"}, :rate]) || 0
+      http_announce_rate_ipv6 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet6", action: "announce", endpoint: "http"}, :rate]) || 0
+      http_announce_rate_all = http_announce_rate_ipv4 + http_announce_rate_ipv6
+
+      http_scrape_rate_ipv4 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet", action: "scrape", endpoint: "http"}, :rate]) || 0
+      http_scrape_rate_ipv6 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet6", action: "scrape", endpoint: "http"}, :rate]) || 0
+      http_scrape_rate_all = http_scrape_rate_ipv4 + http_scrape_rate_ipv6
+
+      http_failure_rate_all =
+        Map.get(metrics, [:extracker, :request, :failure, :count], %{})
+        |> Enum.filter(fn {key, _value} -> key[:endpoint] == "http" end)
+        |> Enum.map(fn {_key, value} -> value[:rate] end)
+        |> Enum.sum()
+
+      http_failure_rate_ipv4 =
+        Map.get(metrics, [:extracker, :request, :failure, :count], %{})
+        |> Enum.filter(fn {key, _value} -> key[:endpoint] == "http" and key[:family] == "inet" end)
+        |> Enum.map(fn {_key, value} -> value[:rate] end)
+        |> Enum.sum()
+
+      http_failure_rate_ipv6 =
+        Map.get(metrics, [:extracker, :request, :failure, :count], %{})
+        |> Enum.filter(fn {key, _value} -> key[:endpoint] == "http" and key[:family] == "inet6" end)
+        |> Enum.map(fn {_key, value} -> value[:rate] end)
+        |> Enum.sum()
+
       udp_connect_rate_ipv4 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet", action: "connect", endpoint: "udp"}, :rate]) || 0
       udp_connect_rate_ipv6 = get_in(metrics, [[:extracker, :request, :processing_time, :count], %{family: "inet6", action: "connect", endpoint: "udp"}, :rate]) || 0
       udp_connect_rate_all = udp_connect_rate_ipv4 + udp_connect_rate_ipv6
@@ -128,6 +154,32 @@ defmodule ExTracker.Telemetry.BasicReporter do
         <td>#{peers_leechers_all}</td>
         <td>#{peers_leechers_ipv4}</td>
         <td>#{peers_leechers_ipv6}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead><tr><th colspan="4">HTTP Responses (per second)</th></tr></thead>
+    <thead><tr><th>Action</th><th>Total</th><th>IPv4</th><th>IPv6</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>announce</td>
+        <td>#{trunc(http_announce_rate_all)}</td>
+        <td>#{trunc(http_announce_rate_ipv4)}</td>
+        <td>#{trunc(http_announce_rate_ipv6)}</td>
+      </tr>
+      <tr>
+        <td>scrape</td>
+        <td>#{trunc(http_scrape_rate_all)}</td>
+        <td>#{trunc(http_scrape_rate_ipv4)}</td>
+        <td>#{trunc(http_scrape_rate_ipv6)}</td>
+      </tr>
+
+      <tr>
+        <td>failure</td>
+        <td>#{trunc(http_failure_rate_all)}</td>
+        <td>#{trunc(http_failure_rate_ipv4)}</td>
+        <td>#{trunc(http_failure_rate_ipv6)}</td>
       </tr>
     </tbody>
   </table>
