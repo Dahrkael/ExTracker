@@ -41,8 +41,9 @@ defmodule ExTracker.Types.PeerData do
     downloaded: 0,
     left: 0,
     country: "",
-    state: :fresh,
-    last_updated: 0
+    last_event: nil,
+    last_updated: 0,
+    state: :fresh
   ]
 
   def set_id(peer_data, id) when byte_size(id) == 20 do
@@ -87,12 +88,16 @@ defmodule ExTracker.Types.PeerData do
     %PeerData{peer_data | country: country}
   end
 
-  @spec update_state(peer_data :: PeerData, state :: peer_state()) :: PeerData
-  def update_state(peer_data, state) do
-    %PeerData{peer_data | state: state}
+  def update_last_event(peer_data, event) when is_atom(event) do
+    %PeerData{peer_data | last_event: event}
   end
 
   def update_last_updated(peer_data, timestamp) do
     %PeerData{peer_data | last_updated: timestamp}
+  end
+
+  @spec update_state(peer_data :: PeerData, state :: peer_state()) :: PeerData
+  def update_state(peer_data, state) do
+    %PeerData{peer_data | state: state}
   end
 end

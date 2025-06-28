@@ -84,6 +84,7 @@ defmodule ExTracker.Processors.Announce do
       |> PeerData.update_uploaded(request.uploaded)
       |> PeerData.update_downloaded(request.downloaded)
       |> PeerData.update_left(request.left)
+      |> PeerData.update_last_event(request.event)
 
     if peer_data.left > 0 && request.left == 0 do
       # TODO increase swarm downloads counter if 'left' reaches zero
