@@ -56,7 +56,7 @@ defmodule ExTracker.Application do
       _ -> []
     end
 
-    children = Enum.concat([required_children, optional_children, ipv4_optional_children, ipv6_optional_children])
+    children = Enum.concat([optional_children, required_children, ipv4_optional_children, ipv6_optional_children])
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
