@@ -27,7 +27,7 @@ Implementation Legend:
 - 🔲 **BEP 27:** [Private Torrents](https://www.bittorrent.org/beps/bep_0027.html)
 #### Draft BEPs
 - ✅ **BEP 7:** [IPv6 Tracker Extension](https://www.bittorrent.org/beps/bep_0007.html)
-- 🔲 **BEP 21:** [Extension for partial seeds](https://www.bittorrent.org/beps/bep_0021.html)
+- ✅ **BEP 21:** [Extension for partial seeds](https://www.bittorrent.org/beps/bep_0021.html)
 - ✅ **BEP 24:** [Tracker Returns External IP](https://www.bittorrent.org/beps/bep_0024.html)
 - 🔲 **BEP 31:** [Tracker Failure Retry Extension](https://www.bittorrent.org/beps/bep_0031.html)
 - ✅ **BEP 41:** [UDP Tracker Protocol Extensions](https://www.bittorrent.org/beps/bep_0041.html)

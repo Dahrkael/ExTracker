@@ -85,8 +85,8 @@ defmodule ExTracker.Processors.Announce do
       |> PeerData.update_downloaded(request.downloaded)
       |> PeerData.update_left(request.left)
 
-    # TODO increase swarm downloads counter if 'left' reaches zero
     if peer_data.left > 0 && request.left == 0 do
+      # TODO increase swarm downloads counter if 'left' reaches zero
     end
 
     # update peer internal state based on the provided event
@@ -96,6 +96,7 @@ defmodule ExTracker.Processors.Announce do
         :stopped -> PeerData.update_state(updated_data, :gone)
         :updated -> PeerData.update_state(updated_data, :active)
         :completed -> PeerData.update_state(updated_data, :active)
+        :paused -> PeerData.update_state(updated_data, :active)
       end
 
       if updated_data.state == :gone do
@@ -121,8 +122,14 @@ defmodule ExTracker.Processors.Announce do
     max_peers = Application.get_env(:extracker, :max_peers_returned, 25)
     desired_total = if request.numwant > max_peers or request.numwant < 0, do: max_peers, else: request.numwant
 
-    peer_list = case peer_data.left do
-      0 ->
+    is_seeder = cond do
+      peer_data.left == 0 -> true # full seeders
+      request.event == :paused -> true # partial seeders
+      true -> false # leechers
+    end
+
+    peer_list = case is_seeder do
+      true ->
         # peer is seeding so try to give it leechers
         leechers = ExTracker.Swarm.get_leechers(swarm, :all, client.family, need_peer_data)
         case length(leechers) do
@@ -136,7 +143,7 @@ defmodule ExTracker.Processors.Announce do
             # there are not enough leechers so try to fill up with some random seeders
             ExTracker.Swarm.get_seeders(swarm, :all, client.family, need_peer_data) |> Enum.take_random(desired_total - length)
         end
-      _ ->
+      false ->
         # peer is leeching so try to give it seeders
         seeders = ExTracker.Swarm.get_seeders(swarm, :all, client.family, need_peer_data)
         case length(seeders) do
