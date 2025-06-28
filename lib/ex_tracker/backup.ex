@@ -18,7 +18,7 @@ defmodule ExTracker.Backup do
   end
 
   def make_sync(path) do
-    GenServer.call(__MODULE__, {:make, path})
+    GenServer.call(__MODULE__, {:make, path}, :infinity)
   end
 
   def restore(path) do
