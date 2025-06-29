@@ -4,6 +4,7 @@ defmodule ExTracker.HTTP.Router do
 
   @assets_folder Application.app_dir(:extracker, "priv/static/assets")
 
+  plug ExTracker.HTTP.HandleReverseProxy
   plug Plug.Logger
   plug ExTracker.Telemetry.Plug
   plug Plug.Static, at: "/assets", from: @assets_folder
