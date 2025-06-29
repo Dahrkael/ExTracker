@@ -36,7 +36,7 @@ defmodule ExTracker.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      { :plug_cowboy, "~> 2.6" },
+      {:plug_cowboy, "~> 2.6"},
       {:bento, "~> 1.0"},
       {:locus, "~> 2.3"},
       {:telemetry, "~> 1.3"},
