@@ -11,6 +11,7 @@ defmodule ExTracker.HTTP.Router do
   plug :match
   #plug Plug.Parsers, parsers: [:urlencoded, :multipart], pass: ["*/*"], validate_utf8: false
   plug Plug.Parsers, parsers: [], pass: ["text/html"], validate_utf8: false
+  plug ExTracker.HTTP.MultiParamParser
   plug :dispatch
 
   # client announcements
@@ -42,10 +43,41 @@ defmodule ExTracker.HTTP.Router do
         true ->
           case check_allowed_useragent(conn) do
             true ->
-              # TODO scrapes are supposed to allow multiple 'info_hash' keys to be present to scrape more than one torrent at a time
-              # but apparently the standard requires those keys to have '[]' appended to be treated as a list, otherwise they get overwritten
-              # this probably needs a custom query_string parser at the router level
-              ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
+              case Map.fetch(conn.assigns[:multi_query_params], "info_hash") do
+                :error -> # only malformed queries should fall here
+                  ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
+                {:ok, [_hash]} -> # just one hash, may fail so needs special handle
+                  ExTracker.Processors.Scrape.process(conn.remote_ip, conn.query_params)
+                {:ok, list} -> # multiple hashes in one request
+                  # TODO use chunked response
+                  successes =
+                    list
+                    # process each info_hash on its own
+                    |> Enum.map(fn hash ->
+                      params = %{conn.query_params | "info_hash" => hash}
+                      case ExTracker.Processors.Scrape.process(conn.remote_ip, params) do
+                        {:ok, response} ->
+                          {:ok, byte_hash} = ExTracker.Utils.validate_hash(hash)
+                          %{byte_hash => response}
+                        {:error, _response} -> nil
+                      end
+                    end)
+                    # discard failed requests
+                    |> Enum.reject(&(&1 == nil))
+                    # combine the rest into one map
+                    |> Enum.reduce( %{}, fn success, acc ->
+                      Map.merge(acc, success)
+                    end)
+
+                    # return a failure reason is all hashes failed to process
+                    case Kernel.map_size(successes) do
+                      0 ->
+                        {400, %{"failure reason" => "all requested hashes failed to be scraped"}}
+                      _ ->
+                        #  wrap the map as per BEP 48
+                        {200, ExTracker.Types.ScrapeResponse.generate_success_http_envelope(successes)}
+                    end
+              end
             false ->
               {403, %{ "failure reason" => "User-Agent not allowed"}}
           end
@@ -80,9 +112,9 @@ defmodule ExTracker.HTTP.Router do
     result = case status do
       :ok -> :success
       :error -> :failure
-      200..299 -> :success
-      400..499 -> :failure
-      500..599 -> :error
+      code when code in 200..299 -> :success
+      code when code in 400..499 -> :failure
+      code when code in 500..599 -> :error
     end
 
     family = case tuple_size(ip) do

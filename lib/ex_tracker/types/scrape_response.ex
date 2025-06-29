@@ -1,8 +1,14 @@
 defmodule ExTracker.Types.ScrapeResponse do
 
+  # The response to a successful request is a bencoded dictionary containing one key-value pair:
+  # the key files with the value being a dictionary of the 20-byte string representation of an infohash paired with a dictionary of swarm metadata.
+  def generate_success_http_envelope(successes) when is_map(successes) do
+    %{
+      "files" => successes
+    }
+  end
+
   def generate_success(seeders, partial_seeders, leechers, downloads) do
-    # The response to a successful request is a bencoded dictionary containing one key-value pair:
-    # the key files with the value being a dictionary of the 20-byte string representation of an infohash paired with a dictionary of swarm metadata.
     # The fields found in the swarm metadata dictionary are as follows:
     %{
       # complete: The number of active peers that have completed downloading.
