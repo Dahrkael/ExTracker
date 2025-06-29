@@ -45,6 +45,7 @@ if config_env() in [:prod] do
     telemetry_port: 9568, # port in which telemetry endpoints are served (via HTTP)
     telemetry_basic: false, # expose a simple HTML stats endpoint at '/tracker-stats.html'
     telemetry_prometheus: true, # expose a Prometheus scrape endpoint at '/prometheus'
+    reverse_proxy_address: "", # specify the address of a reverse proxy if present (caddy, nginx, apache, etc)
     debug: false # enable extra debug logs and checks
 
   config :logger, level: :notice # log minimum level. info and debug may get spammy

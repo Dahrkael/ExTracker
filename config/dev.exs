@@ -43,6 +43,7 @@ config :extracker,
   telemetry_port: 9568,
   telemetry_basic: true,
   telemetry_prometheus: true,
+  reverse_proxy_address: "",
   debug: true
 
 config :logger,
