@@ -31,7 +31,7 @@ Implementation Legend:
 - ✅ **BEP 24:** [Tracker Returns External IP](https://www.bittorrent.org/beps/bep_0024.html)
 - 🔲 **BEP 31:** [Tracker Failure Retry Extension](https://www.bittorrent.org/beps/bep_0031.html)
 - ✅ **BEP 41:** [UDP Tracker Protocol Extensions](https://www.bittorrent.org/beps/bep_0041.html)
-- 🔰 **BEP 48:** [Tracker Protocol Extension: Scrape](https://www.bittorrent.org/beps/bep_0048.html)
+- ✅ **BEP 48:** [Tracker Protocol Extension: Scrape](https://www.bittorrent.org/beps/bep_0048.html)
 - ✅ **BEP 52:** [The BitTorrent Protocol Specification v2](https://www.bittorrent.org/beps/bep_0052.html)
 #### Deferred BEPs
 - ❌ **BEP 8:** [Tracker Peer Obfuscation](https://www.bittorrent.org/beps/bep_0008.html)
