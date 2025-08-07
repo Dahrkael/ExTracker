@@ -26,9 +26,9 @@ if config_env() in [:prod] do
     max_peers_returned: 100, # non-negative maximum amount of peers sent to announcing clients
     announce_interval: (30 * 60), # seconds that clients SHOULD wait before announcing again
     announce_interval_min: 60, # seconds that clients HAVE to wait before announcing again. below this requests are ignored
-    restrict_hashes: false, # optionally filter hashes using access lists (valid options: "whitelist", "blacklist", "none"/false/empty)
+    restrict_hashes: "disabled", # optionally filter hashes using access lists (valid options: "whitelist", "blacklist", "disabled"/false/empty)
     restrict_hashes_file: "~/hashes.txt", # file from which the (dis)allowed hash list is loaded
-    restrict_useragents: false, # optionally filter user-agents (in the HTTP(S) port) using access lists (valid options: "whitelist", "blacklist", "none"/false/empty)
+    restrict_useragents: "disabled", # optionally filter user-agents (in the HTTP(S) port) using access lists (valid options: "whitelist", "blacklist", "disabled"/false/empty)
     restrict_useragents_file: "~/useragents.txt", # file from which the (dis)allowed user-agent list is loaded
     cleaning_interval: (60 * 1000), # milliseconds between cleaning passes
     swarm_clean_delay: (10 * 60 * 1_000), # milliseconds after a swarm is marked as 'needs cleaning'
