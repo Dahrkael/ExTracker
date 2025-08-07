@@ -17,7 +17,8 @@ defmodule ExTracker.Application do
 
     # print out the configuration to be sure what values are being used after reading everything
     IO.puts(ExTracker.console_about())
-    print_current_config()
+    print_extracker_config()
+    print_integration_config()
 
     # check before spawning anything if the provided bind ips are valid
     if !check_ipv4() or !check_ipv6() do
@@ -35,6 +36,7 @@ defmodule ExTracker.Application do
       ++ get_geoip_children()
       ++ get_telemetry_children()
       ++ get_accesslist_children()
+      ++ get_integration_children()
 
     ipv4_optional_children = case Application.get_env(:extracker, :ipv4_enabled) do
       true ->
@@ -64,14 +66,31 @@ defmodule ExTracker.Application do
     Supervisor.start_link(children, opts)
   end
 
-  defp print_current_config() do
+  defp print_extracker_config() do
     config =
       Application.get_all_env(:extracker)
       |> Enum.sort_by(fn {key, _value} -> key end)
       |> Enum.map(fn {key, value} -> "#{Atom.to_string(key)}: #{inspect(value)}" end)
       |> Enum.join("\n")
 
-    IO.puts(["configuration to be used:\n"] ++ config)
+    IO.puts(["CONFIGURATION TO BE USED:\n"] ++ List.wrap(config) ++ ["\n"])
+  end
+
+  defp print_integration_config() do
+    integration_env = case Application.get_env(:extracker, :integration, "none") do
+        "arcadia" -> :extracker_arcadia
+        _ -> nil
+      end
+
+    if integration_env != nil do
+      config =
+        Application.get_all_env(integration_env)
+        |> Enum.sort_by(fn {key, _value} -> key end)
+        |> Enum.map(fn {key, value} -> "#{Atom.to_string(key)}: #{inspect(value)}" end)
+        |> Enum.join("\n")
+
+      IO.puts(["INTEGRATION CONFIGURATION TO BE USED:\n"] ++ List.wrap(config) ++ ["\n"])
+     end
   end
 
   defp check_ipv4() do
@@ -154,6 +173,26 @@ defmodule ExTracker.Application do
       end
     end)
     |> List.flatten()
+  end
+
+  defp get_integration_children() do
+    # integrations are supposed to be exclusive
+    case Application.get_env(:extracker, :integration) do
+      "arcadia" ->
+        Logger.notice("Integration enabled: Arcadia")
+
+        {:ok, address} =
+          Application.get_env(:extracker_arcadia, :api_bind_address)
+          |> to_charlist()
+          |> :inet.parse_address()
+
+        port = Application.get_env(:extracker_arcadia, :api_port)
+
+        [{ExTracker.Integrations.Arcadia.Supervisor, [ip: address, port: port]}]
+      other -> # "none", "", false or anything really
+        Logger.notice("Integrations disabled: #{other}")
+        []
+    end
   end
 
   defp get_http_children(family) do
