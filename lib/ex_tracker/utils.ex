@@ -1,5 +1,12 @@
 defmodule ExTracker.Utils do
 
+  def is_process_alive(name) do
+    case Process.whereis(name) do
+      nil -> false
+      pid -> Process.alive?(pid)
+    end
+  end
+
   def pad_to_8_bytes(bin) when byte_size(bin) < 8 do
     padding = :binary.copy(<<0>>, 8 - byte_size(bin))
     padding <> bin
