@@ -60,11 +60,11 @@ defmodule ExTracker.Accesslist do
 
   @impl true
   def handle_cast({:add, entry}, state) do
-    case :ets.insert_new(state.table, entry) do
+    case :ets.insert_new(state.table, {entry}) do
       true ->
-        Logger.debug("accesslist #{state.table}: added entry '#{entry}'")
+        Logger.debug("accesslist #{state.table}: added entry '#{inspect(entry)}'")
       false ->
-        Logger.debug("accesslist #{state.table}: entry '#{entry}' already exists")
+        Logger.debug("accesslist #{state.table}: entry '#{inspect(entry)}' already exists")
     end
     {:noreply, state}
   end
@@ -73,10 +73,10 @@ defmodule ExTracker.Accesslist do
   def handle_cast({:remove, entry}, state) do
     with [^entry] <- :ets.lookup(state.table, entry),
       true <- :ets.delete(state.table, entry) do
-        Logger.debug("accesslist #{state.table}: removed entry '#{entry}'")
+        Logger.debug("accesslist #{state.table}: removed entry '#{inspect(entry)}'")
     else
       _ ->
-        Logger.debug("accesslist #{state.table}: missing entry '#{entry}'")
+        Logger.debug("accesslist #{state.table}: missing entry '#{inspect(entry)}'")
     end
     {:noreply, state}
   end
@@ -108,6 +108,6 @@ defmodule ExTracker.Accesslist do
     # clean the table first and then insert the data
     # TODO error handling, data races?
     :ets.delete_all_objects(state.table)
-    list |> Enum.each(&(:ets.insert_new(state.table, &1)))
+    list |> Enum.each(&(:ets.insert_new(state.table, {&1})))
   end
 end
