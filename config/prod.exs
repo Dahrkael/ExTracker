@@ -44,7 +44,18 @@ config :extracker,
   telemetry_basic: false,
   telemetry_prometheus: true,
   reverse_proxy_address: "",
+  http_request_timeout: 60_000,
+  integration: "none",
   debug: false
 
 config :logger,
   level: :notice
+
+config :tesla,
+  adapter: Tesla.Adapter.Mint
+
+config :extracker_arcadia,
+  api_bind_address: "0.0.0.0",
+  api_port: 8081,
+  site_host: "http://localhost:8080",
+  site_api_key: ""

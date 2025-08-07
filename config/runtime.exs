@@ -2,6 +2,7 @@ import Config
 
 if config_env() in [:prod] do
 
+  # base configuration
   config :extracker,
     ipv4_enabled: true, # listen or not on IPv4
     ipv4_bind_address: "0.0.0.0", # IP to bind to when IPv4 is enabled. "0.0.0.0" listens on every address
@@ -13,7 +14,7 @@ if config_env() in [:prod] do
     https_port: 7070, # port used by the TLS endpoint if enabled
     https_keyfile: "", # path to the certificate file for TLS
     udp_enabled: true, # enable the UDP endpoint to fulfill client requests
-    udp_port: 6969, # port usesd by the UDP endpoint if enabled
+    udp_port: 6969, # port used by the UDP endpoint if enabled
     udp_routers: -1, # amount of processes listening to UDP requests. -1 means one per VM scheduler
     udp_recbuf_size: -1, # kernel receive buffer size for the UDP socket. 512_000 is a good number, -1 means the OS decides
     udp_sndbuf_size: -1, # kernel send buffer size for the UDP socket. 512_000 is a good number, -1 means the OS decides
@@ -46,8 +47,17 @@ if config_env() in [:prod] do
     telemetry_basic: false, # expose a simple HTML stats endpoint at '/tracker-stats.html'
     telemetry_prometheus: true, # expose a Prometheus scrape endpoint at '/prometheus'
     reverse_proxy_address: "", # specify the address of a reverse proxy if present (caddy, nginx, apache, etc)
+    http_request_timeout: 60_000, # time before *outgoing* http requests timeout (mainly for integrations)
+    integration: "none", # select which integration (if any) to be enabled (current options: "arcadia", "none")
     debug: false # enable extra debug logs and checks
 
   config :logger, level: :notice # log minimum level. info and debug may get spammy
+
+  # configuration for integrations
+  config :extracker_arcadia,
+    api_bind_address: "0.0.0.0", # IP to bind the tracker's REST API
+    api_port: 8081, # port used for the tracker's REST API
+    site_host: "http://localhost:8080", # address (and port) where Arcadia's backend is listening
+    site_api_key: "" # API Key for Arcadia's Tracker user
 
 end
