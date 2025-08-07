@@ -169,6 +169,7 @@ defmodule ExTracker.Application do
           [Supervisor.child_spec({ExTracker.Accesslist, [name: id, file: file]}, id: id)]
         true ->
           Logger.warning("#{title} Accesslist is set to 'true'. did you mean 'whitelist' or 'blacklist'?")
+          []
         _ ->
           Logger.notice("#{title} Accesslist disabled")
           []
