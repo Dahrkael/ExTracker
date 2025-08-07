@@ -1,34 +1,39 @@
 defmodule Extracker.Config.SystemEnvironment do
   @moduledoc """
-  Module to dynamically override the application configuration of :extracker
+  Module to dynamically override the application configuration of :extracker*
   using environment variables. For each configuration key defined,
-  the corresponding environment variable is generated using the prefix
-  "EXTRACKER_". For example, the key :http_port will be mapped to EXTRACKER_HTTP_PORT
+  the corresponding environment variable is generated using a prefix derived from the application name.
+  For example, the key :http_port under :extracker will be mapped to EXTRACKER_HTTP_PORT
   """
 
-  @app :extracker
-  @prefix "EXTRACKER_"
+  @apps [:extracker, :extracker_arcadia]
 
-  @doc """
-  Loads environment variables for the :extracker configuration and overrides
-  its values if corresponding environment variables are defined.
-  """
   def load() do
-    Application.get_all_env(@app)
+    @apps |> Enum.each(&load/1)
+  end
+
+  def load(app) do
+    prefix = app
+      |> Atom.to_string()
+      |> String.replace("-", "_")
+      |> String.upcase()
+      |> Kernel.<>("_")
+
+    Application.get_all_env(app)
     |> Enum.each(fn {key, default} ->
-      env_name = generate_env_var_name(key)
+      env_name = generate_env_var_name(prefix, key)
 
       case System.get_env(env_name) do
         nil -> :ok
-        env_val -> Application.put_env(@app, key, convert_value(env_val, default))
+        env_val -> Application.put_env(app, key, convert_value(env_val, default))
       end
     end)
 
     :ok
   end
 
-  defp generate_env_var_name(key) when is_atom(key) do
-    @prefix <> (Atom.to_string(key) |> String.upcase())
+  defp generate_env_var_name(prefix, key) when is_atom(key) do
+    prefix <> (Atom.to_string(key) |> String.upcase())
   end
 
   defp convert_value(val, default) when is_boolean(default) do
