@@ -19,7 +19,7 @@ defmodule ExTracker.Accesslist do
   def contains(name, entry) do
     table = :"#{@table_prefix}_#{name}"
     case :ets.lookup(table, entry) do
-      [^entry] -> true
+      [{^entry}] -> true
       _ -> false
     end
   end
@@ -71,7 +71,7 @@ defmodule ExTracker.Accesslist do
 
    @impl true
   def handle_cast({:remove, entry}, state) do
-    with [^entry] <- :ets.lookup(state.table, entry),
+    with [{^entry}] <- :ets.lookup(state.table, entry),
       true <- :ets.delete(state.table, entry) do
         Logger.debug("accesslist #{state.table}: removed entry '#{inspect(entry)}'")
     else

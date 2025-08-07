@@ -147,7 +147,7 @@ defmodule ExTracker.SwarmFinder do
   end
 
   defp check_allowed_hash(hash) do
-    case Application.get_env(:extracker, :restrict_hashes, false) do
+    case Application.get_env(:extracker, :restrict_hashes, "disabled") do
       "whitelist" -> ExTracker.Accesslist.contains(:whitelist_hashes, hash)
       "blacklist" -> !ExTracker.Accesslist.contains(:blacklist_hashes, hash)
       _ -> true
