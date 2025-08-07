@@ -166,7 +166,7 @@ defmodule ExTracker.SwarmFinder do
   defp create_swarm(hash) do
     # atom count has an upper limit so better make it optional for debug mostly
     table_name = case Application.get_env(:extracker, :named_lookups, ExTracker.debug_enabled()) do
-      true -> :"swarm_#{hash |> Base.encode16() |> String.downcase()}"
+      true -> :"swarm_#{Utils.hash_to_string(hash)}"
       false -> :swarm
     end
 
@@ -177,7 +177,7 @@ defmodule ExTracker.SwarmFinder do
     :ets.insert(@swarms_table_name, {hash, table, timestamp, timestamp})
 
     :telemetry.execute([:extracker, :swarm, :created], %{})
-    Logger.debug("created table #{inspect(table_name)} for hash #{hash |> Base.encode16() |> String.downcase()}")
+    Logger.debug("created table #{inspect(table_name)} for hash #{Utils.hash_to_string(hash)}")
 
     table
   end
@@ -191,7 +191,7 @@ defmodule ExTracker.SwarmFinder do
         :ets.delete(table)
 
         :telemetry.execute([:extracker, :swarm, :destroyed], %{})
-        Logger.debug("destroyed swarm for hash #{hash |> Base.encode16() |> String.downcase()}")
+        Logger.debug("destroyed swarm for hash #{Utils.hash_to_string(hash)}")
       _ -> :notfound
     end
   end
