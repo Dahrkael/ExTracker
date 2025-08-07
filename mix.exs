@@ -36,13 +36,19 @@ defmodule ExTracker.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # base dependencies
       {:plug_cowboy, "~> 2.6"},
       {:bento, "~> 1.0"},
       {:locus, "~> 2.3"},
       {:telemetry, "~> 1.3"},
       {:telemetry_metrics, "~> 1.1"},
       {:telemetry_poller, "~> 1.2"},
-      {:telemetry_metrics_prometheus_core, "~> 1.2"}
+      {:telemetry_metrics_prometheus_core, "~> 1.2"},
+
+      # dependencies for integrations
+      {:tesla, "~> 1.11"},
+      {:jason, "~> 1.4"},
+      {:mint, "~> 1.0"}
     ]
   end
 end
