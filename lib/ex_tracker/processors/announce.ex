@@ -58,7 +58,7 @@ defmodule ExTracker.Processors.Announce do
   end
 
   defp check_announce_interval(client, peer_data) do
-    if peer_data.state != :fresh do
+    if peer_data.last_event != nil do
       now = System.system_time(:millisecond)
       elapsed = now - peer_data.last_updated
       elapsed = elapsed + 1000 # some clients like to announce a few milliseconds early so give it some wiggle
@@ -90,24 +90,14 @@ defmodule ExTracker.Processors.Announce do
       # TODO increase swarm downloads counter if 'left' reaches zero
     end
 
-    # update peer internal state based on the provided event
-    updated_data =
-      case request.event do
-        :started -> PeerData.update_state(updated_data, :active)
-        :stopped -> PeerData.update_state(updated_data, :gone)
-        :updated -> PeerData.update_state(updated_data, :active)
-        :completed -> PeerData.update_state(updated_data, :active)
-        :paused -> PeerData.update_state(updated_data, :active)
-      end
-
-      if updated_data.state == :gone do
-        # remove the peer as it has abandoned the swarm
-        ExTracker.Swarm.remove_peer(swarm, client)
-      else
-        # update the peer info in the swarm
-        ExTracker.Swarm.update_peer(swarm, client, updated_data)
-      end
-      {:ok, updated_data}
+    if updated_data.last_event == :stopped do
+      # remove the peer as it has abandoned the swarm
+      ExTracker.Swarm.remove_peer(swarm, client)
+    else
+      # update the peer info in the swarm
+      ExTracker.Swarm.update_peer(swarm, client, updated_data)
+    end
+    {:ok, updated_data}
   end
 
   # the stopped event mean the peer is done with the torrent so it doesn't need more peers

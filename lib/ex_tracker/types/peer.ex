@@ -32,8 +32,6 @@ end
 defmodule ExTracker.Types.PeerData do
   alias ExTracker.Types.PeerData
 
-  @type peer_state :: :fresh | :gone | :active
-
   defstruct [
     id: nil,
     key: nil,
@@ -42,8 +40,7 @@ defmodule ExTracker.Types.PeerData do
     left: 0,
     country: "",
     last_event: nil,
-    last_updated: 0,
-    state: :fresh
+    last_updated: 0
   ]
 
   def set_id(peer_data, id) when byte_size(id) == 20 do
@@ -94,10 +91,5 @@ defmodule ExTracker.Types.PeerData do
 
   def update_last_updated(peer_data, timestamp) do
     %PeerData{peer_data | last_updated: timestamp}
-  end
-
-  @spec update_state(peer_data :: PeerData, state :: peer_state()) :: PeerData
-  def update_state(peer_data, state) do
-    %PeerData{peer_data | state: state}
   end
 end
