@@ -1,25 +1,27 @@
 defmodule ExTracker.Swarm do
   require Logger
+  alias ExTracker.Types.PeerID
   alias ExTracker.Types.PeerData
 
   # try to find and retrieve a peer registered in the specified swarm
-  @spec find_peer(swarm :: any(), id :: PeerID) :: {:ok, PeerData} | :notfound
+  @spec find_peer(swarm :: any(), id :: PeerID.t()) :: {:ok, PeerData} | :notfound
   def find_peer(swarm, id) do
-    case :ets.lookup(swarm, id) do
+    sid = PeerID.to_storage(id)
+    case :ets.lookup(swarm, sid) do
       [{_, data}] -> {:ok, data}
       _ -> :notfound
     end
   end
 
   # add a new peer to the specified swarm
-  @spec add_peer(swarm :: any(), id :: PeerID) :: {:ok, PeerData} | {:error, any()}
+  @spec add_peer(swarm :: any(), id :: PeerID.t()) :: {:ok, PeerData} | {:error, any()}
   def add_peer(swarm, id) do
     data = %PeerData{
       country: geoip_lookup_country(id.ip),
       last_updated: System.system_time(:millisecond)
     }
 
-    peer = {id, data}
+    peer = {PeerID.to_storage(id), data}
     case :ets.insert_new(swarm, peer) do
       true ->
         :telemetry.execute([:extracker, :peer, :added], %{}, %{ family: id.family})
@@ -40,9 +42,10 @@ defmodule ExTracker.Swarm do
   end
 
   # remove an existing peer from the specified swarm
-  @spec remove_peer(swarm :: any(), id :: PeerID) :: :ok | :notfound
+  @spec remove_peer(swarm :: any(), id :: PeerID.t()) :: :ok | :notfound
   def remove_peer(swarm, id) do
-    with [{_, _data}] <- :ets.lookup(swarm, id), true <- :ets.delete(swarm, id) do
+    sid = PeerID.to_storage(id)
+    with [{_, _data}] <- :ets.lookup(swarm, sid), true <- :ets.delete(swarm, sid) do
       :telemetry.execute([:extracker, :peer, :removed], %{}, %{ family: id.family})
       :ok
     else
@@ -50,14 +53,15 @@ defmodule ExTracker.Swarm do
     end
   end
 
-  @spec update_peer(swarm :: any(), id :: PeerID, data :: PeerData) :: {:ok, PeerData} | {:error, any()}
+  @spec update_peer(swarm :: any(), id :: PeerID.t(), data :: PeerData) :: {:ok, PeerData} | {:error, any()}
   def update_peer(swarm, id, data)  do
     # reflect when was the last update
     timestamp = System.system_time(:millisecond)
     data = PeerData.update_last_updated(data, timestamp)
 
     if(find_peer(swarm, id)) do
-      case :ets.insert(swarm, {id, data}) do
+      sid = PeerID.to_storage(id)
+      case :ets.insert(swarm, {sid, data}) do
         true -> {:ok, data}
         false -> {:error, "peer insertion failed"}
       end
@@ -106,10 +110,16 @@ defmodule ExTracker.Swarm do
     end
 
     spec_condition_family = case family do
-      :inet -> {:==, {:map_get, :family, :"$1"}, :inet} # id.family == :inet
-      :inet6 -> {:==, {:map_get, :family, :"$1"}, :inet6} # id.family == :inet6
+      :inet  -> {:==, {:binary_part, :"$1", 0, 1}, <<0x04>>} # id.family == :inet
+      :inet6 -> {:==, {:binary_part, :"$1", 0, 1}, <<0x06>>} # id.family == :inet6
       :all -> nil # no condition
     end
+
+    #spec_condition_family = case family do
+    #  :inet -> {:==, {:map_get, :family, :"$1"}, :inet} # id.family == :inet
+    #  :inet6 -> {:==, {:map_get, :family, :"$1"}, :inet6} # id.family == :inet6
+    #  :all -> nil # no condition
+    #end
 
     # [{:andalso,{:>, {:map_get, :left, :"$2"}, 0},{:==, {:map_get, :family, :"$1"}, :inet}}]
     spec_condition = case {spec_condition_type, spec_condition_family} do
@@ -129,10 +139,19 @@ defmodule ExTracker.Swarm do
 
     # execute the specified request
     try do
-      case count do
+      result = case count do
         :all -> :ets.select(swarm, spec)
         integer -> :ets.select(swarm, spec, integer)
       end
+
+      # convert the IDs back to the normal type
+      case include_data do
+        false ->
+          Enum.map(result, fn sid -> PeerID.from_storage(sid) end)
+        true ->
+          Enum.map(result, fn {sid, data} -> {PeerID.from_storage(sid), data} end)
+      end
+
     rescue
       # the swarm table may be gone while the query reaches this point
       e in ArgumentError ->
@@ -161,5 +180,9 @@ defmodule ExTracker.Swarm do
     #spec = :ets.fun2ms(fn {id, data} = peer when data.last_updated < timestamp -> peer end)
     spec = [{{:"$1", :"$2"}, [{:<, {:map_get, :last_updated, :"$2"}, timestamp}], [:"$_"]}]
     :ets.select(swarm, spec)
+    # convert the IDs back to the normal type
+    |> Enum.map(fn {sid, data} ->
+      {PeerID.from_storage(sid), data}
+    end)
   end
 end
