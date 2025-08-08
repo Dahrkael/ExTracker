@@ -8,7 +8,14 @@ defmodule ExTracker.Types.PeerID do
   @enforce_keys [:ip, :port, :family]
   defstruct [:ip, :port, :family]
 
-  def new(ip, port) when is_tuple(ip) and is_integer(port)do
+  @type t :: %__MODULE__{
+          ip: :inet.ip_address() | :inet.ip6_address(),
+          port: :inet.port_number(),
+          family: :inet | :inet6
+        }
+
+  @spec new(:inet.ip_address() | :inet.ip6_address(), :inet.port_number()) :: t()
+  def new(ip, port) do
     family = cond do
       tuple_size(ip) == 4 -> :inet
       tuple_size(ip) == 8 -> :inet6
@@ -23,6 +30,16 @@ defmodule ExTracker.Types.PeerID do
 
   def is_ipv6(%PeerID{family: family}) do
     family == :inet6
+  end
+
+  @spec to_storage(t()) :: binary()
+  def to_storage(%PeerID{} = peer_id) do
+    PeerID.Storage.encode(peer_id)
+  end
+
+  @spec from_storage(binary()) :: t()
+  def from_storage(peer_id) do
+    PeerID.Storage.decode(peer_id)
   end
 end
 
