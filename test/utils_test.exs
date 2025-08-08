@@ -1,4 +1,4 @@
-defmodule ExTracker.UtilsTest do
+defmodule ExTrackerTest.UtilsTest do
   use ExUnit.Case, async: true
 
   alias ExTracker.Utils

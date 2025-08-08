@@ -1,4 +1,4 @@
-defmodule ExTracker.AccesslistTest do
+defmodule ExTrackerTest.AccesslistTest do
   use ExUnit.Case, async: false
   alias ExTracker.Accesslist
 
