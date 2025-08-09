@@ -76,7 +76,7 @@ defmodule ExTrackerTest.AnnounceTest do
       assert {:ok, _response} = Announce.process(@source_ip, leecher_params)
       assert {:ok, response} = Announce.process(@source_ip, seeder_params)
 
-      assert %{"incomplete" => 1, "peers" => <<127, 0, 0, 1, 5, 59, rest::binary>> } = response
+      assert %{"incomplete" => 1, "peers" => <<127, 0, 0, 1, 5, 59, _rest::binary>> } = response
     end
 
     test "return seeders for leechers" do
@@ -95,7 +95,7 @@ defmodule ExTrackerTest.AnnounceTest do
       assert {:ok, _response} = Announce.process(@source_ip, seeder_params)
       assert {:ok, response} = Announce.process(@source_ip, leecher_params)
 
-      assert %{"complete" => 1, "peers" => <<127, 0, 0, 1, 5, 58, rest::binary>> } = response
+      assert %{"complete" => 1, "peers" => <<127, 0, 0, 1, 5, 58, _rest::binary>> } = response
     end
   end
 end
