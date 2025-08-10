@@ -74,6 +74,7 @@ defmodule ExTracker.Types.AnnounceRequest do
       {:ok, port} ->
         case Integer.parse(port) do
           {number, _rest} when number >= 0 and number <= 65535 -> {:ok, number}
+          {number, _rest} -> {:error, "invalid 'port' parameter: '#{number}' is not yet handled"}
           :error -> {:error, "invalid 'port' parameter"}
         end
       :error -> {:error, "missing 'port' parameter"}
