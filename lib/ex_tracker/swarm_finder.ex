@@ -1,5 +1,5 @@
 # ExTracker.SwarmFinder is the process responsible for keeping track of all the swarms (torrents) using ETS
-# tables are created and looked up here but the actual updates happen in ExTracker.Swarm<
+# tables are created and looked up here but the actual updates happen in ExTracker.Swarm
 defmodule ExTracker.SwarmFinder do
 
   # ETS table to store the index for every swarm table containing the actual data
@@ -170,7 +170,7 @@ defmodule ExTracker.SwarmFinder do
       false -> :swarm
     end
 
-    ets_args = [:set, :public] ++ get_ets_compression_arg()
+    ets_args = [:set, :public] ++ get_ets_compression_arg() ++ [write_concurrency: :auto]
     table = :ets.new(table_name, ets_args)
 
     timestamp = System.system_time(:millisecond)
