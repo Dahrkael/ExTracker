@@ -23,7 +23,7 @@ defmodule ExTracker.Swarm do
     }
 
     peer = {id, data}
-    case insert_peer(swarm, peer) do
+    case insert_peer(swarm, peer, true) do
       true ->
         :telemetry.execute([:extracker, :peer, :added], %{}, %{ family: id.family})
         {:ok, data}
@@ -60,7 +60,7 @@ defmodule ExTracker.Swarm do
     data = PeerData.update_last_updated(data, timestamp)
 
     if(find_peer(swarm, id)) do
-      case insert_peer(swarm, {id, data}) do
+      case insert_peer(swarm, {id, data}, false) do
         true -> {:ok, data}
         false -> {:error, "peer insertion failed"}
       end
@@ -85,10 +85,13 @@ defmodule ExTracker.Swarm do
     :ets.lookup(swarm.table, key)
   end
 
-  @spec insert_peer(swarm :: SwarmID.t(), {id :: PeerID.t(), data :: PeerData}) :: boolean()
-  defp insert_peer(swarm, {id, data}) do
+  @spec insert_peer(swarm :: SwarmID.t(), {id :: PeerID.t(), data :: PeerData}, new :: boolean()) :: boolean()
+  defp insert_peer(swarm, {id, data}, new) do
     key = get_peer_table_key(swarm, id)
-    :ets.insert_new(swarm.table, {key, data})
+    case new do
+      true -> :ets.insert_new(swarm.table, {key, data})
+      false -> :ets.insert(swarm.table, {key, data})
+    end
   end
 
   @spec delete_peer(swarm :: SwarmID.t(), {id :: PeerID.t()}) :: boolean()
@@ -98,27 +101,38 @@ defmodule ExTracker.Swarm do
   end
 
   # get the total number of peers registered in the specified swarm filtered by ipv4 or ipv6
+  @spec get_peer_count(swarm :: SwarmID.t(), family :: atom()) :: non_neg_integer()
   def get_peer_count(swarm, family) do
     get_peers(swarm, :all, :all, family, false) |> length()
   end
 
   # get the total number of leechers registered in the specified swarm
+  @spec get_leecher_count(swarm :: SwarmID.t(), family :: atom()) :: non_neg_integer()
   def get_leecher_count(swarm, family) do
     get_leechers(swarm, :all, family, false) |> length()
   end
 
   # get the total number of seeders registered in the specified swarm
+  @spec get_seeder_count(swarm :: SwarmID.t(), family :: atom()) :: non_neg_integer()
   def get_seeder_count(swarm, family) do
     get_seeders(swarm, :all, family, false) |> length()
   end
 
   # get the total number of partial seeders registered in the specified swarm
+  @spec get_partial_seeder_count(swarm :: SwarmID.t(), family :: atom()) :: non_neg_integer()
   def get_partial_seeder_count(swarm, family) do
     get_partial_seeders(swarm, :all, family, false) |> length()
   end
 
   # return a list of all the peers registered in the swarm  up to 'count', optionally includes their associated data
+  @spec get_peers(swarm :: SwarmID.t(), count :: :all | non_neg_integer(), type :: atom(), family :: atom(), include_data :: boolean()) :: list()
   def get_peers(swarm, count, type, family, include_data) do
+    # on small swarms the peer id is on the second position of the first (key) tuple
+    peer_id_element = case swarm.type do
+      :big -> :"$1"
+      :small -> {:element, 2, :"$1"}
+    end
+
     spec_condition_type = case type do
       :leechers -> {:>, {:map_get, :left, :"$2"}, 0} # data.left > 0
       :seeders -> {:==, {:map_get, :left, :"$2"}, 0} # data.left == 0
@@ -127,16 +141,10 @@ defmodule ExTracker.Swarm do
     end
 
     spec_condition_family = case family do
-      :inet  -> {:==, {:binary_part, :"$1", 0, 1}, <<0x04>>} # id.family == :inet
-      :inet6 -> {:==, {:binary_part, :"$1", 0, 1}, <<0x06>>} # id.family == :inet6
+      :inet  -> {:==, {:binary_part, peer_id_element, 0, 1}, <<0x04>>} # id.family == :inet
+      :inet6 -> {:==, {:binary_part, peer_id_element, 0, 1}, <<0x06>>} # id.family == :inet6
       :all -> nil # no condition
     end
-
-    #spec_condition_family = case family do
-    #  :inet -> {:==, {:map_get, :family, :"$1"}, :inet} # id.family == :inet
-    #  :inet6 -> {:==, {:map_get, :family, :"$1"}, :inet6} # id.family == :inet6
-    #  :all -> nil # no condition
-    #end
 
     # [{:andalso,{:>, {:map_get, :left, :"$2"}, 0},{:==, {:map_get, :family, :"$1"}, :inet}}]
     spec_condition = case {spec_condition_type, spec_condition_family} do
@@ -147,8 +155,8 @@ defmodule ExTracker.Swarm do
     end
 
     spec_match = case include_data do
-      false -> [:"$1"] # peer.id
-      true -> [:"$_"] # peer
+      false -> [peer_id_element] # peer.id
+      true -> [{peer_id_element, :"$2"}] # peer
     end
 
     # make the whole spec with the pieces
@@ -157,14 +165,14 @@ defmodule ExTracker.Swarm do
     # execute the specified request
     try do
       result = case count do
-        :all -> :ets.select(swarm, spec)
-        integer -> :ets.select(swarm, spec, integer)
+        :all -> :ets.select(swarm.table, spec)
+        integer -> :ets.select(swarm.table, spec, integer)
       end
 
       # convert the IDs back to the normal type
       case include_data do
         false ->
-          Enum.map(result, fn sid -> PeerID.from_storage(sid) end)
+          Enum.map(result, &PeerID.from_storage/1)
         true ->
           Enum.map(result, fn {sid, data} -> {PeerID.from_storage(sid), data} end)
       end
