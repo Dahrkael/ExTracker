@@ -1,28 +1,29 @@
 defmodule ExTracker.Swarm do
   require Logger
+
   alias ExTracker.Types.PeerID
   alias ExTracker.Types.PeerData
+  alias ExTracker.Types.SwarmID
 
   # try to find and retrieve a peer registered in the specified swarm
-  @spec find_peer(swarm :: any(), id :: PeerID.t()) :: {:ok, PeerData} | :notfound
+  @spec find_peer(swarm :: SwarmID.t(), id :: PeerID.t()) :: {:ok, PeerData} | :notfound
   def find_peer(swarm, id) do
-    sid = PeerID.to_storage(id)
-    case :ets.lookup(swarm, sid) do
+    case lookup_peer(swarm, id) do
       [{_, data}] -> {:ok, data}
       _ -> :notfound
     end
   end
 
   # add a new peer to the specified swarm
-  @spec add_peer(swarm :: any(), id :: PeerID.t()) :: {:ok, PeerData} | {:error, any()}
+  @spec add_peer(swarm :: SwarmID.t(), id :: PeerID.t()) :: {:ok, PeerData} | {:error, any()}
   def add_peer(swarm, id) do
     data = %PeerData{
       country: geoip_lookup_country(id.ip),
       last_updated: System.system_time(:millisecond)
     }
 
-    peer = {PeerID.to_storage(id), data}
-    case :ets.insert_new(swarm, peer) do
+    peer = {id, data}
+    case insert_peer(swarm, peer) do
       true ->
         :telemetry.execute([:extracker, :peer, :added], %{}, %{ family: id.family})
         {:ok, data}
@@ -42,10 +43,9 @@ defmodule ExTracker.Swarm do
   end
 
   # remove an existing peer from the specified swarm
-  @spec remove_peer(swarm :: any(), id :: PeerID.t()) :: :ok | :notfound
+  @spec remove_peer(swarm :: SwarmID.t(), id :: PeerID.t()) :: :ok | :notfound
   def remove_peer(swarm, id) do
-    sid = PeerID.to_storage(id)
-    with [{_, _data}] <- :ets.lookup(swarm, sid), true <- :ets.delete(swarm, sid) do
+    with [{_, _data}] <- lookup_peer(swarm, id), true <- delete_peer(swarm, id) do
       :telemetry.execute([:extracker, :peer, :removed], %{}, %{ family: id.family})
       :ok
     else
@@ -53,15 +53,14 @@ defmodule ExTracker.Swarm do
     end
   end
 
-  @spec update_peer(swarm :: any(), id :: PeerID.t(), data :: PeerData) :: {:ok, PeerData} | {:error, any()}
+  @spec update_peer(swarm :: SwarmID.t(), id :: PeerID.t(), data :: PeerData) :: {:ok, PeerData} | {:error, any()}
   def update_peer(swarm, id, data)  do
     # reflect when was the last update
     timestamp = System.system_time(:millisecond)
     data = PeerData.update_last_updated(data, timestamp)
 
     if(find_peer(swarm, id)) do
-      sid = PeerID.to_storage(id)
-      case :ets.insert(swarm, {sid, data}) do
+      case insert_peer(swarm, {id, data}) do
         true -> {:ok, data}
         false -> {:error, "peer insertion failed"}
       end
@@ -69,15 +68,33 @@ defmodule ExTracker.Swarm do
     {:error, "peer not found in swarm"}
   end
 
-  # get the total number of peers registered in the specified swarm
-  def get_peer_count(swarm) do
-    try do
-    :ets.info(swarm, :size)
-    rescue
-      e in ArgumentError ->
-        Logger.debug("get_peer_count/1: #{Exception.message(e)}")
-        0
+  # peers may be in a shared table if there are not enough to be on their own
+  # so before calling the ETS functions we need to append the hash to the key
+  @spec get_peer_table_key(swarm :: SwarmID.t(), id :: PeerID.t()) :: any()
+  defp get_peer_table_key(swarm, id) do
+    sid = PeerID.to_storage(id)
+    case swarm.type do
+      :big -> sid
+      :small -> {swarm.hash, sid}
     end
+  end
+
+  @spec lookup_peer(swarm :: SwarmID.t(), id :: PeerID.t()) :: any()
+  defp lookup_peer(swarm, id) do
+    key = get_peer_table_key(swarm, id)
+    :ets.lookup(swarm.table, key)
+  end
+
+  @spec insert_peer(swarm :: SwarmID.t(), {id :: PeerID.t(), data :: PeerData}) :: boolean()
+  defp insert_peer(swarm, {id, data}) do
+    key = get_peer_table_key(swarm, id)
+    :ets.insert_new(swarm.table, {key, data})
+  end
+
+  @spec delete_peer(swarm :: SwarmID.t(), {id :: PeerID.t()}) :: boolean()
+  defp delete_peer(swarm, id) do
+    key = get_peer_table_key(swarm, id)
+    :ets.delete(swarm.table, key)
   end
 
   # get the total number of peers registered in the specified swarm filtered by ipv4 or ipv6

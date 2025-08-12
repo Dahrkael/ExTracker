@@ -9,6 +9,7 @@ defmodule ExTracker.SwarmFinder do
   use GenServer
   require Logger
 
+  alias ExTracker.Types.SwarmID
   alias ExTracker.Utils
 
   def start_link(args) do
@@ -19,20 +20,27 @@ defmodule ExTracker.SwarmFinder do
   # Client
   #==========================================================================
 
+  @spec find_or_create(hash :: binary()) :: {atom(), SwarmID.t()}
   def find_or_create(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _created_at, _last_cleaned}] -> {:ok, table}
-      _ -> create(hash)
+      [{^hash, table, _created_at, _last_cleaned}] ->
+        {:ok, SwarmID.new(hash, table, :big)}
+      _ ->
+        create(hash)
     end
   end
 
+  @spec find(hash :: binary()) :: {atom(), SwarmID.t()} | :error
   def find(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _created_at, _last_cleaned}] -> table
-      _ -> :error
+      [{^hash, table, _created_at, _last_cleaned}] ->
+        {:ok, SwarmID.new(hash, table, :big)}
+      _ ->
+        :error
     end
   end
 
+  @spec remove(hash :: binary()) :: :ok | :error
   def remove(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
       [{^hash, _table, _created_at, _last_cleaned}] -> destroy(hash)
@@ -40,6 +48,7 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
+  @spec mark_as_clean(hash :: binary()) :: :ok | :error
   def mark_as_clean(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
       [{^hash, _table, _created_at, _last_cleaned}] -> clean(hash)
@@ -47,6 +56,7 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
+  @spec restore_creation_timestamp(hash :: binary(), timestamp :: any()) :: :ok | :error
   def restore_creation_timestamp(hash, timestamp) do
     case :ets.lookup(@swarms_table_name, hash) do
       [{^hash, _table, _created_at, _last_cleaned}] -> restore(hash, timestamp)
@@ -179,7 +189,7 @@ defmodule ExTracker.SwarmFinder do
     :telemetry.execute([:extracker, :swarm, :created], %{})
     Logger.debug("created table #{inspect(table_name)} for hash #{Utils.hash_to_string(hash)}")
 
-    table
+    SwarmID.new(hash, table, :big)
   end
 
   defp destroy_swarm(hash) do
