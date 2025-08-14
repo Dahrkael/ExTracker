@@ -180,7 +180,7 @@ defmodule ExTracker.Cmd do
 
   def create_fake_swarms(swarm_count, peer_count) do
     start = System.monotonic_time(:millisecond)
-    Enum.map(1..swarm_count, fn _s ->
+    Task.async_stream(1..swarm_count, fn _s ->
       # create random hash
       hash = :crypto.strong_rand_bytes(20)
       # create swarm
@@ -195,6 +195,7 @@ defmodule ExTracker.Cmd do
         ExTracker.Swarm.add_peer(swarm, PeerID.new(ip, port))
       end)
     end)
+    |> Stream.run()
     finish = System.monotonic_time(:millisecond)
     Logger.debug("created #{swarm_count} fake swarms with #{peer_count} fake peers each in #{finish - start}ms")
   end
