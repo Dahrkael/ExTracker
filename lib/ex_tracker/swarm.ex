@@ -85,8 +85,9 @@ defmodule ExTracker.Swarm do
     :ets.lookup(swarm.table, key)
   end
 
+  # internal
   @spec insert_peer(swarm :: SwarmID.t(), {id :: PeerID.t(), data :: PeerData}, new :: boolean()) :: boolean()
-  defp insert_peer(swarm, {id, data}, new) do
+  def insert_peer(swarm, {id, data}, new) do
     key = get_peer_table_key(swarm, id)
     case new do
       true -> :ets.insert_new(swarm.table, {key, data})
@@ -94,8 +95,9 @@ defmodule ExTracker.Swarm do
     end
   end
 
+  # internal
   @spec delete_peer(swarm :: SwarmID.t(), {id :: PeerID.t()}) :: boolean()
-  defp delete_peer(swarm, id) do
+  def delete_peer(swarm, id) do
     key = get_peer_table_key(swarm, id)
     :ets.delete(swarm.table, key)
   end
@@ -130,7 +132,18 @@ defmodule ExTracker.Swarm do
     # on small swarms the peer id is on the second position of the first (key) tuple
     peer_id_element = case swarm.type do
       :big -> :"$1"
-      :small -> {:element, 2, :"$1"}
+      :small -> :"$3"
+    end
+
+    spec_head = case swarm.type do
+      :big -> {:"$1", :"$2"}
+      :small -> {{:"$1", :"$3"}, :"$2"}
+    end
+
+    # on small swarms the first position of the first tuple is their swarm hash
+    spec_condition_hash = case swarm.type do
+      :small -> {:==, :"$1", swarm.hash}
+      :big -> nil # no need for a condition
     end
 
     spec_condition_type = case type do
@@ -146,21 +159,22 @@ defmodule ExTracker.Swarm do
       :all -> nil # no condition
     end
 
-    # [{:andalso,{:>, {:map_get, :left, :"$2"}, 0},{:==, {:map_get, :family, :"$1"}, :inet}}]
-    spec_condition = case {spec_condition_type, spec_condition_family} do
-      {nil, nil} -> []
-      {cond1, nil} -> [cond1]
-      {nil, cond2} -> [cond2]
-      {cond1, cond2} -> [{:andalso, cond1, cond2}]
-    end
+    spec_condition =
+      Enum.filter([spec_condition_type, spec_condition_family, spec_condition_hash], & &1)
+      |> case do
+        [] -> []
+        [one] -> [one]
+        [one, two] -> [{:andalso, one, two}]
+        three -> [three |> Enum.reverse() |> Enum.reduce(fn other, previous -> {:andalso, previous, other} end)]
+      end
 
     spec_match = case include_data do
       false -> [peer_id_element] # peer.id
-      true -> [{peer_id_element, :"$2"}] # peer
+      true -> [{{peer_id_element, :"$2"}}] # peer
     end
 
     # make the whole spec with the pieces
-    spec = [{{:"$1", :"$2"}, spec_condition, spec_match}]
+    spec = [{spec_head, spec_condition, spec_match}]
 
     # execute the specified request
     try do
@@ -201,11 +215,37 @@ defmodule ExTracker.Swarm do
     get_peers(swarm, count, :partial_seeders, family, include_data)
   end
 
+  @spec get_stale_peers(swarm :: SwarmID.t(), timestamp :: any()) :: list()
   def get_stale_peers(swarm, timestamp) do
-    #spec = :ets.fun2ms(fn {id, data} = peer when data.last_updated < timestamp -> peer end)
-    spec = [{{:"$1", :"$2"}, [{:<, {:map_get, :last_updated, :"$2"}, timestamp}], [:"$_"]}]
-    :ets.select(swarm, spec)
-    # convert the IDs back to the normal type
+    # on small swarms the peer id is on the second position of the first (key) tuple
+    peer_id_element = case swarm.type do
+      :big -> :"$1"
+      :small -> :"$3"
+    end
+
+    spec_head = case swarm.type do
+      :big -> {:"$1", :"$2"}
+      :small -> {{:"$1", :"$3"}, :"$2"}
+    end
+
+    # on small swarms the first position of the first tuple is their swarm hash
+    spec_condition_hash = case swarm.type do
+      :small -> {:==, :"$1", swarm.hash}
+      :big -> nil # no need for a condition
+    end
+
+    spec_condition_timestamp = {:<, {:map_get, :last_updated, :"$2"}, timestamp}
+
+    spec_condition = case spec_condition_hash do
+      nil -> [spec_condition_timestamp]
+      _cond -> [{:andalso, spec_condition_hash, spec_condition_timestamp}]
+    end
+
+    spec_match = [{{peer_id_element, :"$2"}}]
+    # make the whole spec with the pieces
+    spec = [{spec_head, spec_condition, spec_match}]
+
+    :ets.select(swarm.table, spec)
     |> Enum.map(fn {sid, data} ->
       {PeerID.from_storage(sid), data}
     end)

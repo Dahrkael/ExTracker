@@ -9,6 +9,7 @@ defmodule ExTracker.SwarmFinder do
   use GenServer
   require Logger
 
+  alias ExTracker.Swarm
   alias ExTracker.Types.SwarmID
   alias ExTracker.Utils
 
@@ -23,8 +24,8 @@ defmodule ExTracker.SwarmFinder do
   @spec find_or_create(hash :: binary()) :: {atom(), SwarmID.t()}
   def find_or_create(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _created_at, _last_cleaned}] ->
-        {:ok, SwarmID.new(hash, table, :big)}
+      [{^hash, table, type, _created_at, _last_cleaned}] ->
+        {:ok, SwarmID.new(hash, table, type)}
       _ ->
         create(hash)
     end
@@ -33,8 +34,8 @@ defmodule ExTracker.SwarmFinder do
   @spec find(hash :: binary()) :: {atom(), SwarmID.t()} | :error
   def find(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _created_at, _last_cleaned}] ->
-        {:ok, SwarmID.new(hash, table, :big)}
+      [{^hash, table, type, _created_at, _last_cleaned}] ->
+        {:ok, SwarmID.new(hash, table, type)}
       _ ->
         :error
     end
@@ -43,9 +44,17 @@ defmodule ExTracker.SwarmFinder do
   @spec remove(hash :: binary()) :: :ok | :error
   def remove(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, _table, _created_at, _last_cleaned}] -> destroy(hash)
+      [{^hash, _table, _type, _created_at, _last_cleaned}] -> destroy(hash)
       _ -> :error
     end
+  end
+
+  def upgrade(hash) do
+    GenServer.call(__MODULE__, {:upgrade, hash})
+  end
+
+  def downgrade(hash) do
+    GenServer.call(__MODULE__, {:downgrade, hash})
   end
 
   @spec mark_as_clean(hash :: binary()) :: :ok | :error
@@ -64,8 +73,19 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
+  @spec get_swarm_creation_date(hash :: binary()) :: any()
+  def get_swarm_creation_date(hash) do
+    case :ets.lookup(@swarms_table_name, hash) do
+      [{^hash, _, _, created_at, _}] -> created_at
+      _ -> :error
+    end
+  end
+
   def get_swarm_list() do
     :ets.tab2list(@swarms_table_name)
+    |> Enum.map(fn {hash, table, type, _created_at, _last_cleaned} ->
+      SwarmID.new(hash, table, type)
+    end)
   end
 
   def get_swarm_count() do
@@ -100,12 +120,35 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
+  defp create_buckets(count) when count < 1, do: []
+  defp create_buckets(count) do
+      0..count - 1
+      |> Enum.to_list()
+      |> Enum.map(fn i ->
+        # atom count has an upper limit so better make it optional for debug mostly
+        table_name = case Application.get_env(:extracker, :named_lookups, ExTracker.debug_enabled()) do
+          true -> :"swarm_bucket_#{i}}"
+          false -> :swarm_small
+        end
+
+        ets_args = [:set, :public] ++ get_ets_compression_arg() ++ [write_concurrency: :auto]
+        :ets.new(table_name, ets_args)
+      end)
+      |> List.to_tuple()
+  end
+
   @impl true
   def init(_args) do
+    # create the index table
     ets_args = [:set, :named_table, :protected] ++ get_ets_compression_arg()
     :ets.new(@swarms_table_name, ets_args)
 
-    state = %{}
+    # create all the tables used to pool small swarms
+    bucket_count = Application.get_env(:extracker, :small_swarm_buckets, 1000)
+    buckets = create_buckets(bucket_count)
+
+    state = %{buckets: buckets}
+    Logger.notice("Using #{tuple_size(state.buckets)} buckets for small swarms optimization")
     {:ok, state}
   end
 
@@ -117,10 +160,38 @@ defmodule ExTracker.SwarmFinder do
   def handle_call({:create, hash}, _from, state) do
     result = case check_allowed_hash(hash) do
       true ->
-        table = create_swarm_checked(hash)
+        table = create_swarm_checked(hash, state)
         {:ok, table}
       false ->
         {:error, :hash_not_allowed}
+    end
+
+    {:reply, result, state}
+  end
+
+  @impl true
+  def handle_call({:upgrade, hash}, _from, state) do
+    result = case :ets.lookup(@swarms_table_name, hash) do
+      [{^hash, table, :big, _created_at, _last_cleaned}] -> # swarm is already big
+        SwarmID.new(hash, table, :big)
+      [{^hash, table, :small, created_at, _last_cleaned}] ->
+        upgrade_swarm(hash, table, created_at, state)
+      _ -> # swarm doesnt exist
+        :error
+    end
+
+    {:reply, result, state}
+  end
+
+  @impl true
+  def handle_call({:downgrade, hash}, _from, state) do
+    result = case :ets.lookup(@swarms_table_name, hash) do
+      [{^hash, table, :small, _created_at, _last_cleaned}] -> # swarm is already small
+        SwarmID.new(hash, table, :small)
+      [{^hash, table, :big, created_at, _last_cleaned}] ->
+        downgrade_swarm(hash, table, created_at, state)
+      _ -> # swarm doesnt exist
+        :error
     end
 
     {:reply, result, state}
@@ -164,27 +235,48 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
-  # create a table for the new swarm if it doesnt already exist
-  defp create_swarm_checked(hash) do
+  # create the new swarm if it doesnt already exist
+  # by default start as a small swarm except if there are no buckets
+  defp create_swarm_checked(hash, state) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _created_at, _last_cleaned}] -> table
-      _ -> create_swarm(hash)
+      [{^hash, table, _type, _created_at, _last_cleaned}] -> table
+      _ ->
+        case tuple_size(state.buckets) do
+          0 -> create_swarm(hash, :big, state)
+          _ -> create_swarm(hash, :small, state)
+        end
     end
   end
 
+  # get a bucket table for the new swarm and index it
+  defp create_swarm(hash, :small, state) do
+    # table HAS to exist at this point
+    index = :erlang.phash2(hash) |> rem(tuple_size(state.buckets))
+    table = elem(state.buckets, index)
+
+    timestamp = System.system_time(:millisecond)
+    :ets.insert(@swarms_table_name, {hash, table, :small, timestamp, timestamp})
+
+    # TODO add new telemetry for big vs small swarms
+    :telemetry.execute([:extracker, :swarm, :created], %{})
+    Logger.debug("using bucket table #{index} for hash #{Utils.hash_to_string(hash)}")
+
+    SwarmID.new(hash, table, :small)
+  end
+
   # create a table for the new swarm and index it
-  defp create_swarm(hash) do
+  defp create_swarm(hash, :big, _state) do
     # atom count has an upper limit so better make it optional for debug mostly
     table_name = case Application.get_env(:extracker, :named_lookups, ExTracker.debug_enabled()) do
       true -> :"swarm_#{Utils.hash_to_string(hash)}"
-      false -> :swarm
+      false -> :swarm_big
     end
 
     ets_args = [:set, :public] ++ get_ets_compression_arg() ++ [write_concurrency: :auto]
     table = :ets.new(table_name, ets_args)
 
     timestamp = System.system_time(:millisecond)
-    :ets.insert(@swarms_table_name, {hash, table, timestamp, timestamp})
+    :ets.insert(@swarms_table_name, {hash, table, :big, timestamp, timestamp})
 
     :telemetry.execute([:extracker, :swarm, :created], %{})
     Logger.debug("created table #{inspect(table_name)} for hash #{Utils.hash_to_string(hash)}")
@@ -192,13 +284,57 @@ defmodule ExTracker.SwarmFinder do
     SwarmID.new(hash, table, :big)
   end
 
+  # move the swarm from a bucket to its own table
+  def upgrade_swarm(hash, table, created_at, state) do
+    # retrieve all the peers from the current small swarm
+    old_swarm = SwarmID.new(hash, table, :small)
+    peers = Swarm.get_all_peers(old_swarm, true)
+
+    # create the new big swarm (overrides the index)
+    new_swarm = create_swarm(hash, :big, state)
+    # restore the old creation date
+    :ets.update_element(@swarms_table_name, hash, [{3, created_at}])
+
+    # move the peers to the new swarm
+    Enum.each(peers, fn {id, data} ->
+      Swarm.insert_peer(new_swarm, {id, data}, true)
+      Swarm.delete_peer(old_swarm, id)
+    end)
+
+    new_swarm
+  end
+
+  def downgrade_swarm(hash, table, created_at, state) do
+    # retrieve all the peers from the current big swarm
+    old_swarm = SwarmID.new(hash, table, :big)
+    peers = Swarm.get_all_peers(old_swarm, true)
+
+    # 'create' the new small swarm (overrides the index)
+    new_swarm = create_swarm(hash, :small, state)
+    # restore the old creation date
+    :ets.update_element(@swarms_table_name, hash, [{3, created_at}])
+
+    # move the peers to the new swarm
+    Enum.each(peers, fn {id, data} ->
+      Swarm.insert_peer(new_swarm, {id, data}, true)
+      Swarm.delete_peer(old_swarm, id)
+    end)
+
+    # delete the old big swarm table
+    :ets.delete(old_swarm.table)
+
+    new_swarm
+  end
+
   defp destroy_swarm(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _created_at, _last_cleaned}] ->
+      [{^hash, table, type, _created_at, _last_cleaned}] ->
         # delete the index entry
         :ets.delete(@swarms_table_name, hash)
-        # delete the swarm table
-        :ets.delete(table)
+        # delete the swarm table if it's not a shared one
+        if type == :big do
+          :ets.delete(table)
+        end
 
         :telemetry.execute([:extracker, :swarm, :destroyed], %{})
         Logger.debug("destroyed swarm for hash #{Utils.hash_to_string(hash)}")
