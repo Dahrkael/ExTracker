@@ -1,5 +1,5 @@
 # ExTracker.SwarmCleaner is the process responsible for periodically removing old peers and swarms
-# in the future swarms could be saved to disk instead of being wiped
+# it is also in charge of upgrading and downgrading swarms based on how many peers they have left
 defmodule ExTracker.SwarmCleaner do
 
     use GenServer
@@ -32,8 +32,23 @@ defmodule ExTracker.SwarmCleaner do
 
     @impl true
     def init(_args) do
-      schedule_clean()
-      {:ok, {}}
+      if(get_downgrade_threshold() >= get_upgrade_threshold()) do
+        reason = "required peer count to downgrade swarms is higher than the count to upgrade them. that makes no sense"
+        Logger.error(reason)
+        {:error, reason}
+      else
+        schedule_clean()
+        {:ok, {}}
+      end
+    end
+
+    defp get_upgrade_threshold() do
+      Application.get_env(:extracker, :swarm_upgrade_peer_threshold, 100)
+    end
+
+    defp get_downgrade_threshold() do
+      down_threshold = Application.get_env(:extracker, :swarm_downgrade_percentage_threshold, 0.75)
+      get_upgrade_threshold() * down_threshold
     end
 
     @impl true
@@ -55,10 +70,10 @@ defmodule ExTracker.SwarmCleaner do
       #spec = :ets.fun2ms(fn {hash, table, type, created_at, last_cleaned} = swarm when last_cleaned < swarm_timeout  -> swarm end)
       spec = [{{:"$1", :"$2", :"$3", :"$4", :"$5"}, [{:<, :"$4", swarm_timeout}], [:"$_"]}]
       entries = :ets.select(SwarmFinder.swarms_table_name(), spec)
-      elapsed = System.monotonic_time(:millisecond) - start
 
       entry_count = length(entries)
       if (entry_count > 0) do
+        elapsed = System.monotonic_time(:millisecond) - start
         Logger.debug("swarm cleaner found #{entry_count} swarms pending cleaning in #{elapsed}ms")
       end
 
@@ -80,10 +95,17 @@ defmodule ExTracker.SwarmCleaner do
           Swarm.remove_peer(swarm, id)
         end)
 
+        # flag the swarm as clean
+          SwarmFinder.mark_as_clean(swarm.hash)
         # trigger different logic based on the swarm type after cleaning
         swarm_cleaned(swarm)
       end, max_concurrency: System.schedulers_online())
       |> Stream.run()
+
+      if (entry_count > 0) do
+        elapsed = System.monotonic_time(:millisecond) - start
+        Logger.info("swarm cleaner processed #{entry_count} swarms in #{elapsed}ms")
+      end
 
       schedule_clean()
       {:noreply, state}
@@ -107,18 +129,40 @@ defmodule ExTracker.SwarmCleaner do
     end
 
     defp swarm_cleaned(%{type: type} = swarm) when type == :big do
-      case Swarm.get_peer_count(swarm, :all) do
-        0 ->
+      peer_limit = get_downgrade_threshold()
+      peer_count = Swarm.get_peer_count(swarm, :all)
+      cond do
+        peer_count == 0 ->
           # empty swarms are deleted right away
           SwarmFinder.remove(swarm.hash)
-         _ ->
-          # flag the swarm as clean
-          SwarmFinder.mark_as_clean(swarm.hash)
+        peer_count < peer_limit ->
+          case SwarmFinder.downgrade(swarm.hash) do
+            :error ->
+              Logger.error("failed to downgrade swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
+            _new_swarm ->
+              Logger.info("downgraded swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
+          end
+        true ->
+          :ok # nothing to do
       end
     end
 
     defp swarm_cleaned(%{type: type} = swarm) when type == :small do
-      # flag the swarm as clean
-      SwarmFinder.mark_as_clean(swarm.hash)
+      peer_limit = get_upgrade_threshold()
+      peer_count = Swarm.get_peer_count(swarm, :all)
+      cond do
+        peer_count == 0 ->
+          # empty swarms are deleted right away
+          SwarmFinder.remove(swarm.hash)
+        peer_count >= peer_limit ->
+          case SwarmFinder.upgrade(swarm.hash) do
+            :error ->
+              Logger.error("failed to upgrade swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
+            _new_swarm ->
+              Logger.info("upgraded swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
+          end
+        true ->
+          :ok # nothing to do
+      end
     end
   end

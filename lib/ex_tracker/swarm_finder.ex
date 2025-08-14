@@ -60,7 +60,7 @@ defmodule ExTracker.SwarmFinder do
   @spec mark_as_clean(hash :: binary()) :: :ok | :error
   def mark_as_clean(hash) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, _table, _created_at, _last_cleaned}] -> clean(hash)
+      [{^hash, _table, _type, _created_at, _last_cleaned}] -> clean(hash)
       _ -> :error
     end
   end
@@ -68,7 +68,7 @@ defmodule ExTracker.SwarmFinder do
   @spec restore_creation_timestamp(hash :: binary(), timestamp :: any()) :: :ok | :error
   def restore_creation_timestamp(hash, timestamp) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, _table, _created_at, _last_cleaned}] -> restore(hash, timestamp)
+      [{^hash, _table, _type, _created_at, _last_cleaned}] -> restore(hash, timestamp)
       _ -> :error
     end
   end
@@ -206,7 +206,7 @@ defmodule ExTracker.SwarmFinder do
   @impl true
   def handle_cast({:clean, hash}, state) do
     timestamp = System.system_time(:millisecond)
-    case :ets.update_element(@swarms_table_name, hash, [{4, timestamp}]) do
+    case :ets.update_element(@swarms_table_name, hash, [{5, timestamp}]) do
       true -> :ok
       false -> Logger.warning("failed to mark entry #{Utils.hash_to_string(hash)} as clean")
     end
@@ -215,7 +215,7 @@ defmodule ExTracker.SwarmFinder do
 
   @impl true
   def handle_cast({:restore, hash, created_at}, state) do
-    case :ets.update_element(@swarms_table_name, hash, [{3, created_at}]) do
+    case :ets.update_element(@swarms_table_name, hash, [{4, created_at}]) do
       true -> :ok
       false -> Logger.warning("failed to update creation time for entry #{Utils.hash_to_string(hash)}")
     end
@@ -251,6 +251,7 @@ defmodule ExTracker.SwarmFinder do
   # get a bucket table for the new swarm and index it
   defp create_swarm(hash, :small, state) do
     # table HAS to exist at this point
+    # TODO to get an even better distribution i can just do a round-robin index
     index = :erlang.phash2(hash) |> rem(tuple_size(state.buckets))
     table = elem(state.buckets, index)
 
@@ -293,7 +294,7 @@ defmodule ExTracker.SwarmFinder do
     # create the new big swarm (overrides the index)
     new_swarm = create_swarm(hash, :big, state)
     # restore the old creation date
-    :ets.update_element(@swarms_table_name, hash, [{3, created_at}])
+    :ets.update_element(@swarms_table_name, hash, [{4, created_at}])
 
     # move the peers to the new swarm
     Enum.each(peers, fn {id, data} ->
@@ -312,7 +313,7 @@ defmodule ExTracker.SwarmFinder do
     # 'create' the new small swarm (overrides the index)
     new_swarm = create_swarm(hash, :small, state)
     # restore the old creation date
-    :ets.update_element(@swarms_table_name, hash, [{3, created_at}])
+    :ets.update_element(@swarms_table_name, hash, [{4, created_at}])
 
     # move the peers to the new swarm
     Enum.each(peers, fn {id, data} ->
