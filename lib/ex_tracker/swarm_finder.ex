@@ -120,7 +120,7 @@ defmodule ExTracker.SwarmFinder do
     end
   end
 
-  defp create_buckets(count) when count < 1, do: []
+  defp create_buckets(count) when count < 1, do: {}
   defp create_buckets(count) do
       0..count - 1
       |> Enum.to_list()
