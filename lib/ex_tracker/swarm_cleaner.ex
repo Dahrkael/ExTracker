@@ -8,6 +8,7 @@ defmodule ExTracker.SwarmCleaner do
     alias ExTracker.Swarm
     alias ExTracker.SwarmFinder
     alias ExTracker.Utils
+    alias ExTracker.Types.SwarmID
 
     def start_link(args) do
       GenServer.start_link(__MODULE__, args, name: __MODULE__)
@@ -51,8 +52,8 @@ defmodule ExTracker.SwarmCleaner do
       peer_timeout = now - Application.get_env(:extracker, :peer_cleanup_delay)
 
       start = System.monotonic_time(:millisecond)
-      #spec = :ets.fun2ms(fn {hash, table, created_at, last_cleaned} = swarm when last_cleaned < swarm_timeout  -> swarm end)
-      spec = [{{:"$1", :"$2", :"$3", :"$4"}, [{:<, :"$4", swarm_timeout}], [:"$_"]}]
+      #spec = :ets.fun2ms(fn {hash, table, type, created_at, last_cleaned} = swarm when last_cleaned < swarm_timeout  -> swarm end)
+      spec = [{{:"$1", :"$2", :"$3", :"$4", :"$5"}, [{:<, :"$4", swarm_timeout}], [:"$_"]}]
       entries = :ets.select(SwarmFinder.swarms_table_name(), spec)
       elapsed = System.monotonic_time(:millisecond) - start
 
@@ -63,9 +64,9 @@ defmodule ExTracker.SwarmCleaner do
 
       # retrieve the peers inside every matching swarm in parallel
       entries
-      |> Task.async_stream(fn entry ->
-        {hash, table, _created_at, _last_cleaned} = entry
-        Swarm.get_stale_peers(table,  peer_timeout)
+      |> Task.async_stream(fn {hash, table, type, _created_at, _last_cleaned} ->
+        swarm = SwarmID.new(hash, table, type)
+        Swarm.get_stale_peers(swarm,  peer_timeout)
         |> (fn stale_peers ->
           peer_count = length(stale_peers)
           if peer_count > 0 do
@@ -76,20 +77,12 @@ defmodule ExTracker.SwarmCleaner do
         # remove the stale ones
         |> Enum.each(fn peer ->
           {id, _data} = peer
-          Swarm.remove_peer(table, id)
+          Swarm.remove_peer(swarm, id)
         end)
 
-        case Swarm.get_peer_count(table) do
-          0 ->
-            # empty swarms are deleted right away
-            SwarmFinder.remove(hash)
-          _ ->
-            # flag the swarm as clean
-            SwarmFinder.mark_as_clean(hash)
-        end
-
-
-      end)
+        # trigger different logic based on the swarm type after cleaning
+        swarm_cleaned(swarm)
+      end, max_concurrency: System.schedulers_online())
       |> Stream.run()
 
       schedule_clean()
@@ -111,5 +104,21 @@ defmodule ExTracker.SwarmCleaner do
     def handle_cast(:clean_all, state) do
       # TODO
       {:noreply, state}
+    end
+
+    defp swarm_cleaned(%{type: type} = swarm) when type == :big do
+      case Swarm.get_peer_count(swarm, :all) do
+        0 ->
+          # empty swarms are deleted right away
+          SwarmFinder.remove(swarm.hash)
+         _ ->
+          # flag the swarm as clean
+          SwarmFinder.mark_as_clean(swarm.hash)
+      end
+    end
+
+    defp swarm_cleaned(%{type: type} = swarm) when type == :small do
+      # flag the swarm as clean
+      SwarmFinder.mark_as_clean(swarm.hash)
     end
   end
