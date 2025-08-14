@@ -36,6 +36,8 @@ if config_env() in [:prod] do
     compress_lookups: true, # compressed lookup tables take less space while losing some performance
     named_lookups: false, # identify each swarm lookup table as "swarm_HASH" instead of just "swarm". Will exhaust the atom table at some point
     small_swarm_buckets: 1000, # how many buckets are used to hold swarms with not enough peers to have their own lookup table
+    swarm_upgrade_peer_threshold: 100, # how many peers need to be inside a swarm to be considered big enough for its own lookup table
+    swarm_downgrade_percentage_threshold: 0.25, # percentage of the peer threshold that a swarm needs to lose to become small again
     backup_auto_enabled: false, # enable automatic backups of current swarms and peers creation
     backup_auto_load_on_startup: false, # load the backup file specified in backup_auto_path when the tracker starts
     backup_auto_interval: (60 * 60 * 1000), # milliseconds between automatic backups
