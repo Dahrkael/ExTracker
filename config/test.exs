@@ -3,6 +3,7 @@ import Config
 config :extracker,
   compress_lookups: true,
   named_lookups: false,
+  small_swarm_buckets: 1000,
   ipv4_enabled: true,
   ipv4_bind_address: "0.0.0.0",
   ipv6_enabled: true,
