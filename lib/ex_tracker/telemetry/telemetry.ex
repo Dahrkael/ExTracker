@@ -136,8 +136,8 @@ defmodule ExTracker.Telemetry do
     [:all, :inet, :inet6]
     |> Enum.each( fn family ->
       total = ExTracker.SwarmFinder.get_swarm_list()
-      |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
-        ExTracker.Swarm.get_peer_count(table, family)
+      |> Task.async_stream(fn swarm ->
+        ExTracker.Swarm.get_peer_count(swarm, family)
       end, ordered: false)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
@@ -151,8 +151,8 @@ defmodule ExTracker.Telemetry do
     [:all, :inet, :inet6]
     |> Enum.each( fn family ->
       total = ExTracker.SwarmFinder.get_swarm_list()
-      |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
-        ExTracker.Swarm.get_seeder_count(table, family)
+      |> Task.async_stream(fn swarm ->
+        ExTracker.Swarm.get_seeder_count(swarm, family)
       end, ordered: false)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
@@ -166,8 +166,8 @@ defmodule ExTracker.Telemetry do
     [:all, :inet, :inet6]
     |> Enum.each( fn family ->
       total = ExTracker.SwarmFinder.get_swarm_list()
-      |> Task.async_stream(fn {_hash, table, _created_at, _last_cleaned} ->
-        ExTracker.Swarm.get_leecher_count(table, family)
+      |> Task.async_stream(fn swarm ->
+        ExTracker.Swarm.get_leecher_count(swarm, family)
       end, ordered: false)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
