@@ -3,7 +3,9 @@ defmodule ExTracker.Backup do
   use GenServer
   require Logger
 
+  alias ExTracker.Swarm
   alias ExTracker.SwarmFinder
+  alias ExTracker.Types.SwarmID
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: __MODULE__)
@@ -91,17 +93,18 @@ defmodule ExTracker.Backup do
         swarm_entries = :ets.tab2list(SwarmFinder.swarms_table_name())
         # merge the actual swarm data (all the peers) with the index data
         swarms_backup = swarm_entries
-          |> Task.async_stream(fn {hash, table, created_at, _last_cleaned} ->
-            swarm_data = try do
-              :ets.tab2list(table)
+          |> Task.async_stream(fn {hash, table, type, created_at, _last_cleaned} ->
+            peers = try do
+              swarm = SwarmID.new(hash, table, type)
+              Swarm.get_all_peers(swarm, true)
             rescue
               e in ArgumentError ->
                 Logger.debug("Backup.save/1: #{Exception.message(e)}")
                 []
             end
 
-            {hash, swarm_data, created_at}
-          end)
+            {hash, peers, created_at}
+          end, max_concurrency: System.schedulers_online())
           |> Enum.map(&elem(&1, 1))
 
           backup = %{
@@ -141,13 +144,14 @@ defmodule ExTracker.Backup do
     case Map.fetch(backup, :swarms) do
       {:ok, swarms} ->
         swarms
-        |> Task.async_stream(fn {hash, swarm_data, created_at} ->
-          # recreate the swarm table
+        |> Task.async_stream(fn {hash, peers, created_at} ->
+          # recreate the swarm
           {:ok, swarm} = SwarmFinder.find_or_create(hash) # FIXME this may fail if control list changes
           # put the correct creation date
           SwarmFinder.restore_creation_timestamp(hash, created_at)
+          # TODO upgrade the swarm ->here<- if it has enough peers
           # insert all the missing peers
-          Enum.each(swarm_data, fn peer -> :ets.insert_new(swarm, peer) end)
+          Enum.each(peers, fn peer -> Swarm.insert_peer(swarm, peer, true) end)
         end)
         |> Stream.run()
 
