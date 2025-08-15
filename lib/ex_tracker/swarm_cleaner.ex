@@ -23,7 +23,7 @@ defmodule ExTracker.SwarmCleaner do
     end
 
     def clean_all() do
-      GenServer.call(__MODULE__, :clean_all)
+      GenServer.call(__MODULE__, :clean_all, 300_000)
     end
 
     #==========================================================================
