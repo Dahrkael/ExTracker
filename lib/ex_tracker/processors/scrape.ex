@@ -26,7 +26,7 @@ defmodule ExTracker.Processors.Scrape do
   defp get_swarm(hash) do
     case ExTracker.SwarmFinder.find(hash) do
       :error -> {:error, "torrent not found"}
-      swarm -> {:ok, swarm}
+      {:ok, swarm} -> {:ok, swarm}
     end
   end
 
