@@ -103,27 +103,83 @@ defmodule ExTracker.Swarm do
   end
 
   # get the total number of peers registered in the specified swarm filtered by ipv4 or ipv6
-  @spec get_peer_count(swarm :: SwarmID.t(), family :: atom()) :: non_neg_integer()
-  def get_peer_count(swarm, family) do
-    get_peers(swarm, :all, :all, family, false) |> length()
+  @spec get_peer_count(swarm :: SwarmID.t(), type :: atom(), family :: atom()) :: non_neg_integer()
+  def get_peer_count(swarm, type, family) do
+    # on small swarms the peer id is on the second position of the first (key) tuple
+    peer_id_element = case swarm.type do
+      :big -> :"$1"
+      :small -> :"$3"
+    end
+
+    spec_head = case swarm.type do
+      :big -> {:"$1", :"$2"}
+      :small -> {{:"$1", :"$3"}, :"$2"}
+    end
+
+    # on small swarms the first position of the first tuple is their swarm hash
+    spec_condition_hash = case swarm.type do
+      :small -> {:==, :"$1", swarm.hash}
+      :big -> nil # no need for a condition
+    end
+
+    spec_condition_type = case type do
+      :leechers -> {:>, {:map_get, :left, :"$2"}, 0} # data.left > 0
+      :seeders -> {:==, {:map_get, :left, :"$2"}, 0} # data.left == 0
+      :partial_seeders -> {:==, {:map_get, :last_event, :"$2"}, :paused} # data.last_event == :paused
+      :all -> nil # no condition
+    end
+
+    spec_condition_family = case family do
+      :inet  -> {:==, {:binary_part, peer_id_element, 0, 1}, <<0x04>>} # id.family == :inet
+      :inet6 -> {:==, {:binary_part, peer_id_element, 0, 1}, <<0x06>>} # id.family == :inet6
+      :all -> nil # no condition
+    end
+
+    spec_condition =
+      Enum.filter([spec_condition_type, spec_condition_family, spec_condition_hash], & &1)
+      |> case do
+        [] -> []
+        [one] -> [one]
+        [one, two] -> [{:andalso, one, two}]
+        three -> [three |> Enum.reverse() |> Enum.reduce(fn other, previous -> {:andalso, previous, other} end)]
+      end
+
+    spec_match = [true]
+
+    # make the whole spec with the pieces
+    spec = [{spec_head, spec_condition, spec_match}]
+
+    # execute the specified request
+    try do
+      :ets.select_count(swarm.table, spec)
+    rescue
+      # the swarm table may be gone while the query reaches this point
+      e in ArgumentError ->
+        Logger.debug("get_peer_count/5: #{Exception.message(e)}")
+        0
+    end
+  end
+
+  def get_all_peer_count(swarm, family) do
+    get_peer_count(swarm, :all, family)
   end
 
   # get the total number of leechers registered in the specified swarm
   @spec get_leecher_count(swarm :: SwarmID.t(), family :: atom()) :: non_neg_integer()
   def get_leecher_count(swarm, family) do
-    get_leechers(swarm, :all, family, false) |> length()
+    get_peer_count(swarm, :leechers, family)
   end
 
   # get the total number of seeders registered in the specified swarm
   @spec get_seeder_count(swarm :: SwarmID.t(), family :: atom()) :: non_neg_integer()
   def get_seeder_count(swarm, family) do
-    get_seeders(swarm, :all, family, false) |> length()
+    get_peer_count(swarm, :seeders, family)
   end
 
   # get the total number of partial seeders registered in the specified swarm
   @spec get_partial_seeder_count(swarm :: SwarmID.t(), family :: atom()) :: non_neg_integer()
   def get_partial_seeder_count(swarm, family) do
-    get_partial_seeders(swarm, :all, family, false) |> length()
+    get_peer_count(swarm, :partial_seeders, family)
   end
 
   # return a list of all the peers registered in the swarm  up to 'count', optionally includes their associated data
