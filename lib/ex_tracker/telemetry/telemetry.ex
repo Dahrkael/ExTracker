@@ -137,7 +137,7 @@ defmodule ExTracker.Telemetry do
     |> Enum.each( fn family ->
       total = ExTracker.SwarmFinder.get_swarm_list()
       |> Task.async_stream(fn swarm ->
-        ExTracker.Swarm.get_peer_count(swarm, family)
+        ExTracker.Swarm.get_all_peer_count(swarm, family)
       end, ordered: false)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))

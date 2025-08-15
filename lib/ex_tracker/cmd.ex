@@ -26,7 +26,7 @@ defmodule ExTracker.Cmd do
 
       info = case show_peers do
         true -> Map.put(info, "peers", ExTracker.Swarm.get_all_peers(swarm, false))
-        false-> Map.put(info, "peer_count", ExTracker.Swarm.get_peer_count(swarm, :all))
+        false-> Map.put(info, "peer_count", ExTracker.Swarm.get_all_peer_count(swarm, :all))
       end
 
       IO.inspect(info, label: "Swarm", limit: :infinity )
@@ -37,12 +37,14 @@ defmodule ExTracker.Cmd do
   def show_biggest_swarms(count) do
     ExTracker.SwarmFinder.get_swarm_list()
       |> Task.async_stream(fn swarm ->
+        IO.inspect(swarm, label: "swarm")
         created_at = ExTracker.SwarmFinder.get_swarm_creation_date(swarm.hash)
-        {swarm.hash, created_at, ExTracker.Swarm.get_peer_count(swarm, :all)}
+        {swarm.hash, created_at, ExTracker.Swarm.get_all_peer_count(swarm, :all)}
       end, ordered: false)
       |> Stream.filter(&match?({:ok, _}, &1))
       |> Enum.map(&elem(&1, 1))
-      |> Enum.sort_by(&elem(&1, 3), :desc) # order by peer count
+      |> IO.inspect(label: "count")
+      |> Enum.sort_by(&elem(&1, 2), :desc) # order by peer count
       |> Enum.take(count)
       |> Task.async_stream(fn{hash, created_at, peer_count} ->
         created = DateTime.from_unix!(created_at, :millisecond)
@@ -74,7 +76,7 @@ defmodule ExTracker.Cmd do
         %{
           "hash" => String.downcase(Base.encode16(swarm.hash)),
           "created" => DateTime.to_string(created),
-          "peer_count" => ExTracker.Swarm.get_peer_count(swarm, :all)
+          "peer_count" => ExTracker.Swarm.get_all_peer_count(swarm, :all)
         }
 
       end, ordered: false)
@@ -93,17 +95,17 @@ defmodule ExTracker.Cmd do
           "swarm" => String.downcase(Base.encode16(hash)),
           "peers" => %{
             "all" => %{
-              "total" => ExTracker.Swarm.get_peer_count(swarm, :all),
+              "total" => ExTracker.Swarm.get_all_peer_count(swarm, :all),
               "leechers" => ExTracker.Swarm.get_seeder_count(swarm, :all),
               "seeders" => ExTracker.Swarm.get_leecher_count(swarm, :all)
             },
             "ipv4" => %{
-              "total" => ExTracker.Swarm.get_peer_count(swarm, :inet),
+              "total" => ExTracker.Swarm.get_all_peer_count(swarm, :inet),
               "leechers" => ExTracker.Swarm.get_leecher_count(swarm, :inet),
               "seeders" => ExTracker.Swarm.get_seeder_count(swarm, :inet)
             },
             "ipv6" => %{
-              "total" => ExTracker.Swarm.get_peer_count(swarm, :inet6),
+              "total" => ExTracker.Swarm.get_all_peer_count(swarm, :inet6),
               "leechers" => ExTracker.Swarm.get_leecher_count(swarm, :inet6),
               "seeders" => ExTracker.Swarm.get_seeder_count(swarm, :inet6)
             },
@@ -125,7 +127,7 @@ defmodule ExTracker.Cmd do
   def show_peer_count(family) do
     total = ExTracker.SwarmFinder.get_swarm_list()
     |> Task.async_stream(fn swarm ->
-      ExTracker.Swarm.get_peer_count(swarm, family)
+      ExTracker.Swarm.get_all_peer_count(swarm, family)
     end, ordered: false)
     |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))

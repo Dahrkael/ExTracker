@@ -193,7 +193,7 @@ defmodule ExTracker.SwarmCleaner do
 
     defp swarm_cleaned(%{type: type} = swarm) when type == :big do
       peer_limit = get_downgrade_threshold()
-      peer_count = Swarm.get_peer_count(swarm, :all)
+      peer_count = Swarm.get_all_peer_count(swarm, :all)
       cond do
         peer_count == 0 ->
           # empty swarms are deleted right away
@@ -212,7 +212,7 @@ defmodule ExTracker.SwarmCleaner do
 
     defp swarm_cleaned(%{type: type} = swarm) when type == :small do
       peer_limit = get_upgrade_threshold()
-      peer_count = Swarm.get_peer_count(swarm, :all)
+      peer_count = Swarm.get_all_peer_count(swarm, :all)
       cond do
         peer_count == 0 ->
           # empty swarms are deleted right away
