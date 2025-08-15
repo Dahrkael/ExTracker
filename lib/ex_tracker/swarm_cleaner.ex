@@ -23,7 +23,7 @@ defmodule ExTracker.SwarmCleaner do
     end
 
     def clean_all() do
-      GenServer.cast(__MODULE__, {:clean_all})
+      GenServer.call(__MODULE__, :clean_all)
     end
 
     #==========================================================================
@@ -61,9 +61,14 @@ defmodule ExTracker.SwarmCleaner do
 
     @impl true
     def handle_info(:clean, state) do
+      #:eprof.start_profiling([self()])
+
       [&clean_swarms_big/0, &clean_swarms_small/0]
       |> Task.async_stream(& &1.(), ordered: false, timeout: :infinity)
       |> Stream.run()
+
+      #:eprof.stop_profiling()
+      #:eprof.analyze(:total)
 
       schedule_clean()
       {:noreply, state}
@@ -81,9 +86,9 @@ defmodule ExTracker.SwarmCleaner do
     end
 
     @impl true
-    def handle_cast(:clean_all, state) do
-      # TODO
-      {:noreply, state}
+    def handle_call(:clean_all, _from, state) do
+      handle_info(:clean, state)
+      {:reply, :ok, state}
     end
 
     def clean_swarms_small() do
@@ -127,9 +132,7 @@ defmodule ExTracker.SwarmCleaner do
         swarm_cleaned(swarm)
       end,
         max_concurrency: System.schedulers_online() * 2,
-        ordered: false,
-        timeout: Application.get_env(:extracker, :cleaning_interval),
-        on_timeout: :kill_task)
+        ordered: false)
       |> Stream.run()
 
       if (entry_count > 0) do
@@ -165,9 +168,7 @@ defmodule ExTracker.SwarmCleaner do
         swarm_cleaned(swarm)
       end,
         max_concurrency: System.schedulers_online() * 2,
-        ordered: false,
-        timeout: Application.get_env(:extracker, :cleaning_interval),
-        on_timeout: :kill_task)
+        ordered: false)
       |> Stream.run()
 
       if (entry_count > 0) do
