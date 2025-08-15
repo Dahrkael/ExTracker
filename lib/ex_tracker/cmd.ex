@@ -194,7 +194,9 @@ defmodule ExTracker.Cmd do
         # add the peers
         ExTracker.Swarm.add_peer(swarm, PeerID.new(ip, port))
       end)
-    end)
+    end,
+      max_concurrency: System.schedulers_online() * 2,
+      ordered: false)
     |> Stream.run()
     finish = System.monotonic_time(:millisecond)
     Logger.debug("created #{swarm_count} fake swarms with #{peer_count} fake peers each in #{finish - start}ms")
