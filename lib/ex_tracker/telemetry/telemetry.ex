@@ -138,7 +138,7 @@ defmodule ExTracker.Telemetry do
       total = ExTracker.SwarmFinder.get_swarm_list()
       |> Task.async_stream(fn swarm ->
         ExTracker.Swarm.get_all_peer_count(swarm, family)
-      end, ordered: false)
+      end, ordered: false, timeout: :infinity)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
       |> Enum.sum()
@@ -153,7 +153,7 @@ defmodule ExTracker.Telemetry do
       total = ExTracker.SwarmFinder.get_swarm_list()
       |> Task.async_stream(fn swarm ->
         ExTracker.Swarm.get_seeder_count(swarm, family)
-      end, ordered: false)
+      end, ordered: false, timeout: :infinity)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
       |> Enum.sum()
@@ -168,7 +168,7 @@ defmodule ExTracker.Telemetry do
       total = ExTracker.SwarmFinder.get_swarm_list()
       |> Task.async_stream(fn swarm ->
         ExTracker.Swarm.get_leecher_count(swarm, family)
-      end, ordered: false)
+      end, ordered: false, timeout: :infinity)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
       |> Enum.sum()
