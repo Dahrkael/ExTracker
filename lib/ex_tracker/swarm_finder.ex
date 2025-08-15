@@ -249,7 +249,8 @@ defmodule ExTracker.SwarmFinder do
   # by default start as a small swarm except if there are no buckets
   defp create_swarm_checked(hash, state) do
     case :ets.lookup(@swarms_table_name, hash) do
-      [{^hash, table, _type, _created_at, _last_cleaned}] -> table
+      [{^hash, table, type, _created_at, _last_cleaned}] ->
+        SwarmID.new(hash, table, type)
       _ ->
         case tuple_size(state.buckets) do
           0 -> create_swarm(hash, :big, state)
