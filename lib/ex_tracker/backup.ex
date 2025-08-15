@@ -104,7 +104,9 @@ defmodule ExTracker.Backup do
             end
 
             {hash, peers, created_at}
-          end, max_concurrency: System.schedulers_online())
+          end,
+            max_concurrency: System.schedulers_online(),
+            ordered: false)
           |> Enum.map(&elem(&1, 1))
 
           backup = %{
@@ -151,8 +153,10 @@ defmodule ExTracker.Backup do
           SwarmFinder.restore_creation_timestamp(hash, created_at)
           # TODO upgrade the swarm ->here<- if it has enough peers
           # insert all the missing peers
-          Enum.each(peers, fn peer -> Swarm.insert_peer(swarm, peer, true) end)
-        end)
+          Enum.each(peers, fn peer -> Swarm.insert_peer(swarm, peer, false) end)
+        end,
+          max_concurrency: System.schedulers_online(),
+          ordered: false)
         |> Stream.run()
 
         Logger.notice("backup restored")

@@ -23,7 +23,7 @@ defmodule ExTracker.Swarm do
     }
 
     peer = {id, data}
-    case insert_peer(swarm, peer, true) do
+    case insert_peer(swarm, peer, false) do # false because true is exponentially slower
       true ->
         :telemetry.execute([:extracker, :peer, :added], %{}, %{ family: id.family})
         {:ok, data}
