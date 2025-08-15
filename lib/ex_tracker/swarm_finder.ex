@@ -89,7 +89,7 @@ defmodule ExTracker.SwarmFinder do
   end
 
   def get_swarm_count() do
-    :ets.tab2list(@swarms_table_name) |> length()
+    :ets.info(@swarms_table_name, :size)
   end
 
   # optimization for SwarmCleaner
