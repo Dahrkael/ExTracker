@@ -92,6 +92,11 @@ defmodule ExTracker.SwarmFinder do
     :ets.tab2list(@swarms_table_name) |> length()
   end
 
+  # optimization for SwarmCleaner
+  def get_swarm_buckets() do
+    GenServer.call(__MODULE__, {:get_buckets})
+  end
+
   defp create(hash) do
     GenServer.call(__MODULE__, {:create, hash})
   end
@@ -198,6 +203,11 @@ defmodule ExTracker.SwarmFinder do
   end
 
   @impl true
+  def handle_call({:get_buckets}, _from, state) do
+    {:reply, state.buckets, state}
+  end
+
+  @impl true
   def handle_cast({:destroy, hash}, state) do
     destroy_swarm(hash)
     {:noreply, state}
@@ -298,7 +308,7 @@ defmodule ExTracker.SwarmFinder do
 
     # move the peers to the new swarm
     Enum.each(peers, fn {id, data} ->
-      Swarm.insert_peer(new_swarm, {id, data}, true)
+      Swarm.insert_peer(new_swarm, {id, data}, false)
       Swarm.delete_peer(old_swarm, id)
     end)
 
@@ -317,7 +327,7 @@ defmodule ExTracker.SwarmFinder do
 
     # move the peers to the new swarm
     Enum.each(peers, fn {id, data} ->
-      Swarm.insert_peer(new_swarm, {id, data}, true)
+      Swarm.insert_peer(new_swarm, {id, data}, false)
       Swarm.delete_peer(old_swarm, id)
     end)
 

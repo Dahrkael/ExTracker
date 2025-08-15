@@ -61,51 +61,9 @@ defmodule ExTracker.SwarmCleaner do
 
     @impl true
     def handle_info(:clean, state) do
-      # select all the tables that are due for a clean up
-      now = System.system_time(:millisecond)
-      swarm_timeout = now - Application.get_env(:extracker, :swarm_clean_delay)
-      peer_timeout = now - Application.get_env(:extracker, :peer_cleanup_delay)
-
-      start = System.monotonic_time(:millisecond)
-      #spec = :ets.fun2ms(fn {hash, table, type, created_at, last_cleaned} = swarm when last_cleaned < swarm_timeout  -> swarm end)
-      spec = [{{:"$1", :"$2", :"$3", :"$4", :"$5"}, [{:<, :"$4", swarm_timeout}], [:"$_"]}]
-      entries = :ets.select(SwarmFinder.swarms_table_name(), spec)
-
-      entry_count = length(entries)
-      if (entry_count > 0) do
-        elapsed = System.monotonic_time(:millisecond) - start
-        Logger.debug("swarm cleaner found #{entry_count} swarms pending cleaning in #{elapsed}ms")
-      end
-
-      # retrieve the peers inside every matching swarm in parallel
-      entries
-      |> Task.async_stream(fn {hash, table, type, _created_at, _last_cleaned} ->
-        swarm = SwarmID.new(hash, table, type)
-        Swarm.get_stale_peers(swarm,  peer_timeout)
-        |> (fn stale_peers ->
-          peer_count = length(stale_peers)
-          if peer_count > 0 do
-            Logger.debug("removing #{length(stale_peers)} stale peers from swarm #{Utils.hash_to_string(hash)}")
-          end
-          stale_peers
-        end).()
-        # remove the stale ones
-        |> Enum.each(fn peer ->
-          {id, _data} = peer
-          Swarm.remove_peer(swarm, id)
-        end)
-
-        # flag the swarm as clean
-          SwarmFinder.mark_as_clean(swarm.hash)
-        # trigger different logic based on the swarm type after cleaning
-        swarm_cleaned(swarm)
-      end, max_concurrency: System.schedulers_online())
+      [&clean_swarms_big/0, &clean_swarms_small/0]
+      |> Task.async_stream(& &1.(), ordered: false, timeout: :infinity)
       |> Stream.run()
-
-      if (entry_count > 0) do
-        elapsed = System.monotonic_time(:millisecond) - start
-        Logger.info("swarm cleaner processed #{entry_count} swarms in #{elapsed}ms")
-      end
 
       schedule_clean()
       {:noreply, state}
@@ -128,6 +86,111 @@ defmodule ExTracker.SwarmCleaner do
       {:noreply, state}
     end
 
+    def clean_swarms_small() do
+      now = System.system_time(:millisecond)
+      swarm_timeout = now - Application.get_env(:extracker, :swarm_clean_delay)
+      peer_timeout = now - Application.get_env(:extracker, :peer_cleanup_delay)
+
+      start = System.monotonic_time(:millisecond)
+      # sweep small swarm tables as a whole instead of per-swarm
+      total_removed =
+        SwarmFinder.get_swarm_buckets()
+        |> Tuple.to_list()
+        |> Task.async_stream(fn bucket ->
+          remove_stale_peers(bucket, peer_timeout)
+        end,
+          max_concurrency: System.schedulers_online() * 2,
+          ordered: false,
+          timeout: :infinity)
+        |> Enum.map(&elem(&1, 1))
+        |> Enum.reduce(fn removed, total ->
+          total + removed
+        end)
+
+      if (total_removed > 0) do
+        elapsed = System.monotonic_time(:millisecond) - start
+        Logger.debug("swarm cleaner removed #{total_removed} stale peers from small swarms in #{elapsed}ms")
+      end
+
+      # select all the swarms that are due for a clean up
+      #spec = :ets.fun2ms(fn {hash, table, type, created_at, last_cleaned} = swarm when type == :small and last_cleaned < swarm_timeout -> swarm end)
+      spec = [{{:"$1", :"$2", :"$3", :"$4", :"$5"}, [{:andalso, {:==, :"$3", :small}, {:<, :"$5", swarm_timeout}}], [:"$_"]}]
+      entries = :ets.select(SwarmFinder.swarms_table_name(), spec)
+      entry_count = length(entries)
+
+      entries
+      |> Task.async_stream(fn {hash, table, type, _created_at, _last_cleaned} ->
+        swarm = SwarmID.new(hash, table, type)
+        # flag the swarm as clean
+        SwarmFinder.mark_as_clean(swarm.hash)
+        # trigger post-clean logic
+        swarm_cleaned(swarm)
+      end,
+        max_concurrency: System.schedulers_online() * 2,
+        ordered: false,
+        timeout: Application.get_env(:extracker, :cleaning_interval),
+        on_timeout: :kill_task)
+      |> Stream.run()
+
+      if (entry_count > 0) do
+        elapsed = System.monotonic_time(:millisecond) - start
+        Logger.debug("swarm cleaner processed #{entry_count} small swarms in #{elapsed}ms")
+      end
+    end
+
+    def clean_swarms_big() do
+      now = System.system_time(:millisecond)
+      swarm_timeout = now - Application.get_env(:extracker, :swarm_clean_delay)
+      peer_timeout = now - Application.get_env(:extracker, :peer_cleanup_delay)
+
+      start = System.monotonic_time(:millisecond)
+      # select all the swarms that are due for a clean up
+      #spec = :ets.fun2ms(fn {hash, table, type, created_at, last_cleaned} = swarm when type == :big and last_cleaned < swarm_timeout -> swarm end)
+      spec = [{{:"$1", :"$2", :"$3", :"$4", :"$5"}, [{:andalso, {:==, :"$3", :big}, {:<, :"$5", swarm_timeout}}], [:"$_"]}]
+      entries = :ets.select(SwarmFinder.swarms_table_name(), spec)
+      entry_count = length(entries)
+
+      # remove the peers inside every matching swarm in parallel
+      entries
+      |> Task.async_stream(fn {hash, table, type, _created_at, _last_cleaned} ->
+        swarm = SwarmID.new(hash, table, type)
+        removed = remove_stale_peers(swarm.table, peer_timeout)
+        #if removed > 0 do
+          Logger.debug("swarm cleaner removed #{removed} stale peers from swarm #{Utils.hash_to_string(swarm.hash)}")
+        #end
+
+        # flag the swarm as clean
+        SwarmFinder.mark_as_clean(swarm.hash)
+        # trigger post-clean logic
+        swarm_cleaned(swarm)
+      end,
+        max_concurrency: System.schedulers_online() * 2,
+        ordered: false,
+        timeout: Application.get_env(:extracker, :cleaning_interval),
+        on_timeout: :kill_task)
+      |> Stream.run()
+
+      if (entry_count > 0) do
+        elapsed = System.monotonic_time(:millisecond) - start
+        Logger.debug("swarm cleaner processed #{entry_count} big swarms in #{elapsed}ms")
+      end
+    end
+
+    @spec remove_stale_peers(table :: :ets.tid(), timestamp :: any()) :: non_neg_integer()
+    def remove_stale_peers(table, timestamp) do
+      # we do not care about ids or hashes here, just the timestamp
+      spec_head = {:"$1", :"$2"}
+      spec_condition = [{:<, {:map_get, :last_updated, :"$2"}, timestamp}]
+      spec_match = [true]
+      # make the whole spec with the pieces
+      spec = [{spec_head, spec_condition, spec_match}]
+
+      # sweep the whole table in one single query to avoid wasting time
+      #matches = :ets.select(table, spec)
+      #IO.inspect(matches, label: "matches")
+      :ets.select_delete(table, spec)
+    end
+
     defp swarm_cleaned(%{type: type} = swarm) when type == :big do
       peer_limit = get_downgrade_threshold()
       peer_count = Swarm.get_peer_count(swarm, :all)
@@ -140,7 +203,7 @@ defmodule ExTracker.SwarmCleaner do
             :error ->
               Logger.error("failed to downgrade swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
             _new_swarm ->
-              Logger.info("downgraded swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
+              Logger.debug("downgraded swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
           end
         true ->
           :ok # nothing to do
@@ -159,7 +222,7 @@ defmodule ExTracker.SwarmCleaner do
             :error ->
               Logger.error("failed to upgrade swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
             _new_swarm ->
-              Logger.info("upgraded swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
+              Logger.debug("upgraded swarm #{Utils.hash_to_string(swarm.hash)} containing #{peer_count} peers")
           end
         true ->
           :ok # nothing to do
