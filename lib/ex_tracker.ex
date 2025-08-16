@@ -5,7 +5,7 @@ defmodule ExTracker do
   end
 
   def version do
-    "0.7.0"
+    "0.8.0"
   end
 
   def web_about do

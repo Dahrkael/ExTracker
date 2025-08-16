@@ -2,7 +2,7 @@ defmodule ExTracker.MixProject do
   use Mix.Project
 
   def version() do
-    "0.7.0"
+    "0.8.0"
   end
 
   def project do
