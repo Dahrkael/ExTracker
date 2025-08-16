@@ -35,7 +35,7 @@ defmodule ExTracker.Cmd do
   end
 
   def show_biggest_swarms(count) do
-    ExTracker.SwarmFinder.get_swarm_list()
+    ExTracker.SwarmFinder.get_swarm_list_stream()
       |> Task.async_stream(fn swarm ->
         created_at = ExTracker.SwarmFinder.get_swarm_creation_date(swarm.hash)
         {swarm.hash, created_at, ExTracker.Swarm.get_all_peer_count(swarm, :all)}
@@ -60,7 +60,7 @@ defmodule ExTracker.Cmd do
 
   def show_peer_count_stats() do
     counts =
-      ExTracker.SwarmFinder.get_swarm_list()
+      ExTracker.SwarmFinder.get_swarm_list_stream()
       |> Task.async_stream(fn swarm ->
         ExTracker.Swarm.get_all_peer_count(swarm, :all)
       end,
@@ -142,7 +142,7 @@ defmodule ExTracker.Cmd do
 
   def show_pretty_swarm_list() do
     data =
-      ExTracker.SwarmFinder.get_swarm_list()
+      ExTracker.SwarmFinder.get_swarm_list_stream()
       |> Task.async_stream(fn swarm ->
         created_at = ExTracker.SwarmFinder.get_swarm_creation_date(swarm.hash)
         created = DateTime.from_unix!(created_at, :millisecond)
@@ -199,7 +199,7 @@ defmodule ExTracker.Cmd do
   end
 
   def show_peer_count(family) do
-    total = ExTracker.SwarmFinder.get_swarm_list()
+    total = ExTracker.SwarmFinder.get_swarm_list_stream()
     |> Task.async_stream(fn swarm ->
       ExTracker.Swarm.get_all_peer_count(swarm, family)
     end, ordered: false)
@@ -212,7 +212,7 @@ defmodule ExTracker.Cmd do
   end
 
   def show_leecher_count(family) do
-    total = ExTracker.SwarmFinder.get_swarm_list()
+    total = ExTracker.SwarmFinder.get_swarm_list_stream()
     |> Task.async_stream(fn swarm ->
       ExTracker.Swarm.get_leecher_count(swarm, family)
     end, ordered: false)
@@ -225,7 +225,7 @@ defmodule ExTracker.Cmd do
   end
 
   def show_seeder_count(family) do
-    total = ExTracker.SwarmFinder.get_swarm_list()
+    total = ExTracker.SwarmFinder.get_swarm_list_stream()
     |> Task.async_stream(fn swarm ->
       ExTracker.Swarm.get_seeder_count(swarm, family)
     end, ordered: false)
@@ -239,7 +239,7 @@ defmodule ExTracker.Cmd do
 
   def show_countries() do
     countries =
-      ExTracker.SwarmFinder.get_swarm_list()
+      ExTracker.SwarmFinder.get_swarm_list_stream()
       |> Task.async_stream(fn swarm ->
         ExTracker.Swarm.get_all_peers(swarm, true)
       end, ordered: false)
