@@ -126,55 +126,40 @@ defmodule ExTracker.Telemetry do
 
       {ExTracker.Telemetry, :measure_swarms_totals, []},
       {ExTracker.Telemetry, :measure_peer_totals, []},
-      {ExTracker.Telemetry, :measure_peer_seeders, []},
-      {ExTracker.Telemetry, :measure_peer_leechers, []},
       {ExTracker.Telemetry, :reset_bandwidth, []},
     ]
   end
 
   def measure_peer_totals() do
-    [:all, :inet, :inet6]
-    |> Enum.each( fn family ->
-      total = ExTracker.SwarmFinder.get_swarm_list()
-      |> Task.async_stream(fn swarm ->
-        ExTracker.Swarm.get_all_peer_count(swarm, family)
-      end, ordered: false, timeout: :infinity)
-      |> Stream.reject(&match?({_, :undefined}, &1))
-      |> Stream.map(&elem(&1, 1))
-      |> Enum.sum()
+    families = %{all: 0, inet: 0, inet6: 0}
+    seeders = measure_peer_type(families, &ExTracker.Swarm.get_seeder_count/2)
+    leechers = measure_peer_type(families, &ExTracker.Swarm.get_leecher_count/2)
 
-      :telemetry.execute([:extracker, :peers, :total], %{value: total}, %{family: Atom.to_string(family)})
-    end)
+    :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.all}, %{family: Atom.to_string(:all)})
+    :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.inet}, %{family: Atom.to_string(:inet)})
+    :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.inet6}, %{family: Atom.to_string(:inet6)})
+
+    :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.all}, %{family: Atom.to_string(:all)})
+    :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.inet}, %{family: Atom.to_string(:inet)})
+    :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.inet6}, %{family: Atom.to_string(:inet6)})
+
+    :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.all + leechers.all)}, %{family: Atom.to_string(:all)})
+    :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.inet + leechers.inet)}, %{family: Atom.to_string(:inet)})
+    :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.inet6 + leechers.inet6)}, %{family: Atom.to_string(:inet6)})
   end
 
-  def measure_peer_seeders() do
-    [:all, :inet, :inet6]
-    |> Enum.each( fn family ->
+  def measure_peer_type(families, count_func) do
+    families
+    |> Enum.map( fn {family, _zero} ->
       total = ExTracker.SwarmFinder.get_swarm_list()
-      |> Task.async_stream(fn swarm ->
-        ExTracker.Swarm.get_seeder_count(swarm, family)
-      end, ordered: false, timeout: :infinity)
+      |> Task.async_stream(fn swarm -> count_func.(swarm, family) end, ordered: false, timeout: :infinity)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
       |> Enum.sum()
 
-      :telemetry.execute([:extracker, :peers, :seeders], %{value: total}, %{family: Atom.to_string(family)})
+      {family, total}
     end)
-  end
-
-  def measure_peer_leechers() do
-    [:all, :inet, :inet6]
-    |> Enum.each( fn family ->
-      total = ExTracker.SwarmFinder.get_swarm_list()
-      |> Task.async_stream(fn swarm ->
-        ExTracker.Swarm.get_leecher_count(swarm, family)
-      end, ordered: false, timeout: :infinity)
-      |> Stream.reject(&match?({_, :undefined}, &1))
-      |> Stream.map(&elem(&1, 1))
-      |> Enum.sum()
-
-      :telemetry.execute([:extracker, :peers, :leechers], %{value: total}, %{family: Atom.to_string(family)})
-    end)
+    |> Map.new()
   end
 
   def measure_swarms_totals() do
