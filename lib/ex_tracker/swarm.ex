@@ -102,6 +102,9 @@ defmodule ExTracker.Swarm do
     :ets.delete(swarm.table, key)
   end
 
+  def get_peer_count(%SwarmID{type: :big} = swarm, :all, :all) do
+    :ets.info(swarm.table, :size)
+  end
   # get the total number of peers registered in the specified swarm filtered by ipv4 or ipv6
   @spec get_peer_count(swarm :: SwarmID.t(), type :: atom(), family :: atom()) :: non_neg_integer()
   def get_peer_count(swarm, type, family) do
