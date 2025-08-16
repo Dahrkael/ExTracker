@@ -88,6 +88,29 @@ defmodule ExTracker.SwarmFinder do
     end)
   end
 
+  def get_swarm_list_stream() do
+    Stream.resource(
+      fn -> # start
+        #:ets.safe_fixtable(@swarms_table_name, true)
+        :ets.first(@swarms_table_name)
+      end,
+      fn key -> # next
+        case key do
+          :"$end_of_table" ->
+            {:halt, nil}
+          _ ->
+            [{hash, table, type, _created_at, _last_cleaned}] = :ets.lookup(@swarms_table_name, key)
+            next_key = :ets.next(@swarms_table_name, key)
+            {[SwarmID.new(hash, table, type)], next_key}
+        end
+      end,
+      fn _ -> # end
+        #:ets.safe_fixtable(@swarms_table_name, false)
+        :ok
+      end
+    )
+  end
+
   def get_swarm_count() do
     :ets.info(@swarms_table_name, :size)
   end

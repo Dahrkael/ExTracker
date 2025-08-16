@@ -34,6 +34,10 @@ defmodule ExTracker.Telemetry do
             port: Application.get_env(:extracker, :telemetry_port),
             compress: true,
             ref: "telemetry_router_inet",
+            transport_options: [
+              num_acceptors: System.schedulers_online(),
+              max_connections: 1000,
+            ]
           ]},
           id: :telemetry_supervisor_inet
         )]
@@ -51,7 +55,11 @@ defmodule ExTracker.Telemetry do
             port: Application.get_env(:extracker, :telemetry_port),
             compress: true,
             ref: "telemetry_router_inet6",
-            ipv6_v6only: true
+            ipv6_v6only: true,
+            transport_options: [
+              num_acceptors: System.schedulers_online(),
+              max_connections: 1000,
+            ]
           ]},
           id: :telemetry_supervisor_inet6
         )]
@@ -151,7 +159,7 @@ defmodule ExTracker.Telemetry do
   def measure_peer_type(families, count_func) do
     families
     |> Enum.map( fn {family, _zero} ->
-      total = ExTracker.SwarmFinder.get_swarm_list()
+      total = ExTracker.SwarmFinder.get_swarm_list_stream()
       |> Task.async_stream(fn swarm -> count_func.(swarm, family) end, ordered: false, timeout: :infinity)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
