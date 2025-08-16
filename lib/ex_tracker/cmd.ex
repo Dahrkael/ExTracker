@@ -258,7 +258,7 @@ defmodule ExTracker.Cmd do
           |> Enum.map(fn {family, peers} -> {family, length(peers)} end)
         }
       end)
-      |> Enum.sort_by(fn {_country, sum, families} -> sum end, :desc)
+      |> Enum.sort_by(fn {_country, sum, _families} -> sum end, :desc)
 
     IO.inspect(countries, label: "Peers by country", limit: :infinity)
     :ok

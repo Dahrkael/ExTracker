@@ -20,7 +20,7 @@ jobs:
     name: Build and test with OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       matrix:
-        otp: ['25', '26', '27']
+        otp: ['26', '27']
         elixir: ['1.17', '1.18']
     steps:
       - uses: actions/checkout@v4
