@@ -216,7 +216,7 @@ defmodule ExTracker.Application do
             ref: "http_router_#{to_string(family)}",
             dispatch: dispatch(),
             transport_options: [
-              num_acceptors: 100,
+              num_acceptors: System.schedulers_online(),
               max_connections: 100_000,
             ]
           ] ++ (if family == :inet6, do: [ipv6_v6only: true], else: [])
@@ -256,7 +256,7 @@ defmodule ExTracker.Application do
             ref: "https_router_#{to_string(family)}",
             dispatch: dispatch(),
             transport_options: [
-              num_acceptors: 100,
+              num_acceptors: System.schedulers_online(),
               max_connections: 100_000,
             ]
           ] ++ (if family == :inet6, do: [ipv6_v6only: true], else: [])
