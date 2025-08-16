@@ -96,8 +96,12 @@ defmodule ExTracker.Cmd do
   defp peer_count_distribution(counts) do
     distribution = [
       {0, 0},
-      {1, 10},
-      {11, 50},
+      {1, 1},
+      {2, 10},
+      {11, 20},
+      {21, 30},
+      {31, 40},
+      {41, 50},
       {51, 100},
       {101, 200},
       {201, 300},
