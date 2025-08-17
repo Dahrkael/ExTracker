@@ -41,7 +41,8 @@ defmodule ExTracker.Cmd do
         {swarm.hash, created_at, ExTracker.Swarm.get_all_peer_count(swarm, :all)}
       end, ordered: false)
       |> Stream.filter(&match?({:ok, _}, &1))
-      |> Enum.map(&elem(&1, 1))
+      |> Stream.map(&elem(&1, 1))
+      |> Stream.reject(&is_nil(&1))
       |> Enum.sort_by(&elem(&1, 2), :desc) # order by peer count
       |> Enum.take(count)
       |> Task.async_stream(fn{hash, created_at, peer_count} ->
@@ -67,7 +68,9 @@ defmodule ExTracker.Cmd do
         ordered: false,
         max_concurrency: System.schedulers_online() * 2)
       |> Stream.filter(&match?({:ok, _}, &1))
-      |> Enum.map(&elem(&1, 1))
+      |> Stream.map(&elem(&1, 1))
+      |> Stream.reject(&is_nil(&1))
+      |> Enum.to_list()
 
     n = length(counts)
     if n > 0 do
@@ -155,7 +158,9 @@ defmodule ExTracker.Cmd do
 
       end, ordered: false)
       |> Stream.filter(&match?({:ok, _}, &1))
-      |> Enum.map(&elem(&1, 1))
+      |> Stream.map(&elem(&1, 1))
+      |> Stream.reject(&is_nil(&1))
+      |> Enum.to_list()
 
     SwarmPrintout.print_table(data)
     :ok
@@ -205,6 +210,7 @@ defmodule ExTracker.Cmd do
     end, ordered: false)
     |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
+    |> Stream.reject(&is_nil(&1))
     |> Enum.sum()
 
     IO.inspect(total, label: "Total peers (family: #{to_string(family)})")
@@ -218,6 +224,7 @@ defmodule ExTracker.Cmd do
     end, ordered: false)
     |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
+    |> Stream.reject(&is_nil(&1))
     |> Enum.sum()
 
     IO.inspect(total, label: "Total leechers (family: #{to_string(family)})")
@@ -231,6 +238,7 @@ defmodule ExTracker.Cmd do
     end, ordered: false)
     |> Stream.reject(&match?({_, :undefined}, &1))
     |> Stream.map(&elem(&1, 1))
+    |> Stream.reject(&is_nil(&1))
     |> Enum.sum()
 
     IO.inspect(total, label: "Total seeders (family: #{to_string(family)})")
@@ -245,6 +253,7 @@ defmodule ExTracker.Cmd do
       end, ordered: false)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
+      |> Stream.reject(&is_nil(&1))
       |> Stream.map(fn peers -> # each swarm returns a list of its peers
         Enum.map(peers, fn {id, data} ->
           {id.family, data.country}

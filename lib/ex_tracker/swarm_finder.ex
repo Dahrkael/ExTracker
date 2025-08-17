@@ -99,9 +99,14 @@ defmodule ExTracker.SwarmFinder do
           :"$end_of_table" ->
             {:halt, nil}
           _ ->
-            [{hash, table, type, _created_at, _last_cleaned}] = :ets.lookup(@swarms_table_name, key)
+            result = case :ets.lookup(@swarms_table_name, key) do
+              [{hash, table, type, _created_at, _last_cleaned}] ->
+                SwarmID.new(hash, table, type)
+              [] ->
+                nil
+            end
             next_key = :ets.next(@swarms_table_name, key)
-            {[SwarmID.new(hash, table, type)], next_key}
+            {[result], next_key}
         end
       end,
       fn _ -> # end

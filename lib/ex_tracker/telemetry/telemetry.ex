@@ -163,6 +163,7 @@ defmodule ExTracker.Telemetry do
       |> Task.async_stream(fn swarm -> count_func.(swarm, family) end, ordered: false, timeout: :infinity)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
+      |> Stream.reject(&is_nil(&1))
       |> Enum.sum()
 
       {family, total}
