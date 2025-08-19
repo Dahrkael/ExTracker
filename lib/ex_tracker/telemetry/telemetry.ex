@@ -160,7 +160,7 @@ defmodule ExTracker.Telemetry do
     families
     |> Enum.map( fn {family, _zero} ->
       total = ExTracker.SwarmFinder.get_swarm_list_stream()
-      |> Task.async_stream(fn swarm -> count_func.(swarm, family) end, ordered: false, timeout: :infinity)
+      |> Task.async_stream(fn swarm -> count_func.(swarm, family) end, ordered: false)
       |> Stream.reject(&match?({_, :undefined}, &1))
       |> Stream.map(&elem(&1, 1))
       |> Stream.reject(&is_nil(&1))
