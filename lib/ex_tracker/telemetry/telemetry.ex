@@ -139,21 +139,28 @@ defmodule ExTracker.Telemetry do
   end
 
   def measure_peer_totals() do
-    families = %{all: 0, inet: 0, inet6: 0}
-    seeders = measure_peer_type(families, &ExTracker.Swarm.get_seeder_count/2)
-    leechers = measure_peer_type(families, &ExTracker.Swarm.get_leecher_count/2)
+    try do
+      families = %{all: 0, inet: 0, inet6: 0}
+      seeders = measure_peer_type(families, &ExTracker.Swarm.get_seeder_count/2)
+      leechers = measure_peer_type(families, &ExTracker.Swarm.get_leecher_count/2)
 
-    :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.all}, %{family: Atom.to_string(:all)})
-    :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.inet}, %{family: Atom.to_string(:inet)})
-    :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.inet6}, %{family: Atom.to_string(:inet6)})
+      :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.all}, %{family: Atom.to_string(:all)})
+      :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.inet}, %{family: Atom.to_string(:inet)})
+      :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.inet6}, %{family: Atom.to_string(:inet6)})
 
-    :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.all}, %{family: Atom.to_string(:all)})
-    :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.inet}, %{family: Atom.to_string(:inet)})
-    :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.inet6}, %{family: Atom.to_string(:inet6)})
+      :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.all}, %{family: Atom.to_string(:all)})
+      :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.inet}, %{family: Atom.to_string(:inet)})
+      :telemetry.execute([:extracker, :peers, :leechers], %{value: leechers.inet6}, %{family: Atom.to_string(:inet6)})
 
-    :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.all + leechers.all)}, %{family: Atom.to_string(:all)})
-    :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.inet + leechers.inet)}, %{family: Atom.to_string(:inet)})
-    :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.inet6 + leechers.inet6)}, %{family: Atom.to_string(:inet6)})
+      :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.all + leechers.all)}, %{family: Atom.to_string(:all)})
+      :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.inet + leechers.inet)}, %{family: Atom.to_string(:inet)})
+      :telemetry.execute([:extracker, :peers, :total], %{value: (seeders.inet6 + leechers.inet6)}, %{family: Atom.to_string(:inet6)})
+    rescue
+      e -> Logger.error("telemetry measure_peer_totals/1 failed to fully execute: #{Exception.message(e)}")
+    catch
+      type, value ->
+        Logger.error("telemetry measure_peer_totals/1 failed to fully execute: #{inspect({type, value})}")
+    end
   end
 
   def measure_peer_type(families, count_func) do
