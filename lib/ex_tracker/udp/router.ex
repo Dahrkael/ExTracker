@@ -452,7 +452,7 @@ defmodule ExTracker.UDP.Router do
     <<url_data::binary-size(length), remaining::binary>> = rest
     options = case Map.fetch(options, :urldata) do
       :error -> Map.put(options, :urldata, url_data)
-      current -> Map.put(options, :urldata, current <> url_data)
+      {:ok, current} -> Map.put(options, :urldata, current <> url_data)
     end
     read_option(remaining, options)
   end
