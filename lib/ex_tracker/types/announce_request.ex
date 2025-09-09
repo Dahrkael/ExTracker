@@ -136,6 +136,7 @@ defmodule ExTracker.Types.AnnounceRequest do
   # or simply send a compact response unless the request contains "compact=0" (in which case they will refuse the request.)
   defp add_field_compact(request, params) do
     case Map.fetch(params, "compact") do
+      {:ok, compact} when is_integer(compact) -> Map.put(request, :compact, compact != 0)
       {:ok, compact} -> Map.put(request, :compact, compact != "0")
       :error -> Map.put(request, :compact, true)
     end
@@ -144,6 +145,7 @@ defmodule ExTracker.Types.AnnounceRequest do
   # no_peer_id: Indicates that the tracker can omit peer id field in peers dictionary. This option is ignored if compact is enabled.
   defp add_field_no_peer_id(request, params) do
     case Map.fetch(params, "no_peer_id") do
+      {:ok, no_peer_id} when is_integer(no_peer_id) -> Map.put(request, :no_peer_id, no_peer_id == 1)
       {:ok, no_peer_id} -> Map.put(request, :no_peer_id, no_peer_id == "1")
       :error -> Map.put(request, :no_peer_id, false)
     end

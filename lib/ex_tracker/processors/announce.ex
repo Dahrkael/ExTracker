@@ -158,11 +158,12 @@ defmodule ExTracker.Processors.Announce do
           true -> ip_to_bytes(peer.ip) <> port_to_bytes(peer.port)
           false ->
             {id, data} = peer
-            result = %{"ip" => id.ip, "port" => id.port}
-            if request.no_peer_id == false do
-              Map.put(result, "peer id", data.id)
+            result = %{"ip" => to_string(:inet.ntoa(id.ip)), "port" => id.port}
+
+            case request.no_peer_id do
+              true -> result
+              false -> Map.put(result, "peer id", data.id)
             end
-            result
         end
       end)
 

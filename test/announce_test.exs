@@ -14,7 +14,7 @@ defmodule ExTrackerTest.AnnounceTest do
     "uploaded"   => 902_110_211,
     "downloaded" => 1_011_849_280,
     "left"       => 854_204_383,
-    "compact"    => 0,
+    "compact"    => 1,
     "event"      => "",
     "numwant"    => -1,
     "options"    => %{urldata: "/announce"},
@@ -96,6 +96,43 @@ defmodule ExTrackerTest.AnnounceTest do
       assert {:ok, response} = Announce.process(@source_ip, leecher_params)
 
       assert %{"complete" => 1, "peers" => <<127, 0, 0, 1, 5, 58, _rest::binary>> } = response
+    end
+  end
+
+  describe "announce responses are bencodeables" do
+    test "full response" do
+      params = @valid_params
+        |> Map.put("port", 1111)
+        |> Map.put("compact", 0)
+        |> Map.put("no_peer_id", 0)
+
+      IO.inspect(params)
+      {:ok, response} = Announce.process(@source_ip, params)
+      IO.inspect(response)
+      assert {:ok, result} = response |> Bento.encode()
+    end
+
+    test "full response without peer ids" do
+      params = @valid_params
+        |> Map.put("port", 1112)
+        |> Map.put("compact", 0)
+        |> Map.put("no_peer_id", 1)
+
+        IO.inspect(params)
+      {:ok, response} = Announce.process(@source_ip, params)
+      IO.inspect(response)
+      assert {:ok, result} = response |> Bento.encode()
+    end
+
+    test "compact response" do
+      params = @valid_params
+        |> Map.put("port", 1113)
+        |> Map.put("compact", 1)
+
+        IO.inspect(params)
+      {:ok, response} = Announce.process(@source_ip, params)
+      IO.inspect(response)
+      assert {:ok, result} = response |> Bento.encode()
     end
   end
 end
