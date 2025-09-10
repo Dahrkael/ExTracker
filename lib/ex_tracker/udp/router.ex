@@ -368,7 +368,7 @@ defmodule ExTracker.UDP.Router do
   defp read_info_hash(<<hash::binary-size(20), rest::binary>>, acc), do: read_info_hash(rest, [hash | acc])
 
   defp read_announce(data) when is_binary(data) and byte_size(data) < 82 do
-    Logger.warning("udp announce too small: #{inspect(data, truncate: :infinity)}")
+     IO.inspect(data, label: "udp announce too small", limit: :infinity)
     {:error, "malformed announce"}
   end
 
