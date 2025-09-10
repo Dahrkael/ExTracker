@@ -61,7 +61,7 @@ defmodule ExTracker.Processors.Announce do
     if peer_data.last_event != nil do
       now = System.system_time(:millisecond)
       elapsed = now - peer_data.last_updated
-      elapsed = elapsed + 1000 # some clients like to announce a few milliseconds early so give it some wiggle
+      elapsed = elapsed + div(elapsed, 10) # some clients like to announce early so give it some wiggle
       cond do
         elapsed < (Application.get_env(:extracker, :announce_interval_min) * 1000) ->
           {:error, "didn't respect minimal announcement interval"}
