@@ -227,7 +227,7 @@ defmodule ExTracker.UDP.Router do
   # announce request
   defp process_message(socket, ip, port, <<connection_id::integer-unsigned-64, @action_announce::integer-unsigned-32, transaction_id::integer-unsigned-32, data::binary>>) do
     {ret, response} = with :ok <- match_connection_id(connection_id, ip, port), # check connection id first
-    params <- read_announce(data), # convert the binary fields to a map for the processor to understand
+    {:ok, params} <- read_announce(data), # convert the binary fields to a map for the processor to understand
     params <- handle_zero_port(params, port), # if port is zero, use the socket port
     {:ok, result} <- ExTracker.Processors.Announce.process(ip, params),
     {:ok, interval} <- Map.fetch(result, "interval"),
@@ -367,6 +367,11 @@ defmodule ExTracker.UDP.Router do
   defp read_info_hash(data, acc) when is_binary(data) and byte_size(data) < 20, do: acc # ignore incomplete hashes
   defp read_info_hash(<<hash::binary-size(20), rest::binary>>, acc), do: read_info_hash(rest, [hash | acc])
 
+  defp read_announce(data) when is_binary(data) and byte_size(data) < 82 do
+    Logger.warning("udp announce too small: #{IO.inspect(data, truncate: :infinity)}")
+    {:error, "malformed announce"}
+  end
+
   # read and convert announce message to a map
   defp read_announce(data) when is_binary(data) do
     <<
@@ -406,7 +411,7 @@ defmodule ExTracker.UDP.Router do
       _ -> "unknown"
     end
 
-    %{
+    params = %{
       "info_hash" => info_hash,
       "peer_id" => peer_id,
       "downloaded" => downloaded,
@@ -420,6 +425,8 @@ defmodule ExTracker.UDP.Router do
       "compact" => 1, # udp is always compact
       "options" => options
     }
+
+    {:ok, params}
   end
 
   # https://stackoverflow.com/questions/32075418/bittorrent-peers-with-zero-ports
