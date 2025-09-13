@@ -52,6 +52,7 @@ if config_env() in [:prod] do
     reverse_proxy_address: "", # specify the address of a reverse proxy if present (caddy, nginx, apache, etc)
     http_request_timeout: 60_000, # time before *outgoing* http requests timeout (mainly for integrations)
     integration: "none", # select which integration (if any) to be enabled (current options: "arcadia", "none")
+    fake_peers_in_responses: 0, # amount of fake peers to inject in the responses (prevent mass scraping of torrent peer lists), a recommended value is 3
     debug: false # enable extra debug logs and checks
 
   config :logger, level: :notice # log minimum level. info and debug may get spammy
