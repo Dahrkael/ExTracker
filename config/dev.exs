@@ -49,6 +49,7 @@ config :extracker,
   reverse_proxy_address: "",
   http_request_timeout: 60_000,
   integration: "none",
+  fake_peers_in_responses: 0,
   debug: true
 
 config :logger,

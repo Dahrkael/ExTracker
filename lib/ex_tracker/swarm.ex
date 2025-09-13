@@ -249,6 +249,19 @@ defmodule ExTracker.Swarm do
         true ->
           Enum.map(result, fn {sid, data} -> {PeerID.from_storage(sid), data} end)
       end
+      
+      # inject fake peers according to the amount in the config
+      |> case do
+          list ->
+            fake_peers_amount = Application.get_env(:extracker, :fake_peers_in_responses, 0)
+            if fake_peers_amount > 0 do
+              fake_peers = for _ <- 1..fake_peers_amount,
+                              do: <<0x04, :rand.uniform(255), :rand.uniform(255), :rand.uniform(255), :rand.uniform(255)>>
+              list ++ fake_peers
+            else
+              list
+            end
+      end
 
     rescue
       # the swarm table may be gone while the query reaches this point
