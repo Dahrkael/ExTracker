@@ -245,24 +245,13 @@ defmodule ExTracker.Swarm do
       # convert the IDs back to the normal type
       case include_data do
         false ->
-          Enum.map(result, &PeerID.from_storage/1)
+          result
+          |> Enum.map(&PeerID.from_storage/1)
+          |> add_fake_peers(family, include_data)
         true ->
           Enum.map(result, fn {sid, data} -> {PeerID.from_storage(sid), data} end)
       end
       
-      # inject fake peers according to the amount in the config
-      |> case do
-          list ->
-            fake_peers_amount = Application.get_env(:extracker, :fake_peers_in_responses, 0)
-            if fake_peers_amount > 0 do
-              fake_peers = for _ <- 1..fake_peers_amount,
-                              do: <<0x04, :rand.uniform(255), :rand.uniform(255), :rand.uniform(255), :rand.uniform(255)>>
-              list ++ fake_peers
-            else
-              list
-            end
-      end
-
     rescue
       # the swarm table may be gone while the query reaches this point
       e in ArgumentError ->
@@ -270,6 +259,37 @@ defmodule ExTracker.Swarm do
         []
     end
   end
+  
+  def add_fake_peers(peers, :inet, false) do
+    fake_peers_amount = Application.get_env(:extracker, :fake_peers_in_responses, 0)
+    if fake_peers_amount > 0 do
+      fake_peers = for _ <- 1..fake_peers_amount do
+        {a, b, c, d} = {:rand.uniform(255), :rand.uniform(255), :rand.uniform(255), :rand.uniform(255)}
+        port = :rand.uniform(65535)
+        PeerID.new({a, b, c, d}, port)
+      end
+      peers ++ fake_peers
+    else
+      peers
+    end
+  end
+
+  def add_fake_peers(peers, :inet6, false) do
+    fake_peers_amount = Application.get_env(:extracker, :fake_peers_in_responses, 0)
+    if fake_peers_amount > 0 do
+      fake_peers = for _ <- 1..fake_peers_amount do
+        ip = {:rand.uniform(65535), :rand.uniform(65535), :rand.uniform(65535), :rand.uniform(65535),
+              :rand.uniform(65535), :rand.uniform(65535), :rand.uniform(65535), :rand.uniform(65535)}
+        port = :rand.uniform(65535)
+        PeerID.new(ip, port)
+      end
+      peers ++ fake_peers
+    else
+      peers
+    end
+  end
+
+  def add_fake_peers(peers, :all, _), do: peers
 
   def get_all_peers(swarm, include_data) do
     get_peers(swarm, :all, :all, :all, include_data)
