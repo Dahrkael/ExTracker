@@ -261,31 +261,29 @@ defmodule ExTracker.Swarm do
   end
   
   def add_fake_peers(peers, :inet, false) do
-    fake_peers_amount = Application.get_env(:extracker, :fake_peers_in_responses, 0)
-    if fake_peers_amount > 0 do
-      fake_peers = for _ <- 1..fake_peers_amount do
+    case Application.get_env(:extracker, :fake_peers_in_responses, 0) do
+      amount when amount > 0 ->
+      fake_peers = for _ <- 1..amount do
         {a, b, c, d} = {:rand.uniform(255), :rand.uniform(255), :rand.uniform(255), :rand.uniform(255)}
         port = :rand.uniform(65535)
         PeerID.new({a, b, c, d}, port)
       end
       peers ++ fake_peers
-    else
-      peers
+      _ -> peers
     end
   end
 
   def add_fake_peers(peers, :inet6, false) do
-    fake_peers_amount = Application.get_env(:extracker, :fake_peers_in_responses, 0)
-    if fake_peers_amount > 0 do
-      fake_peers = for _ <- 1..fake_peers_amount do
+    case Application.get_env(:extracker, :fake_peers_in_responses, 0) do
+      amount when amount > 0 ->
+      fake_peers = for _ <- 1..amount do
         ip = {:rand.uniform(65535), :rand.uniform(65535), :rand.uniform(65535), :rand.uniform(65535),
               :rand.uniform(65535), :rand.uniform(65535), :rand.uniform(65535), :rand.uniform(65535)}
         port = :rand.uniform(65535)
         PeerID.new(ip, port)
       end
       peers ++ fake_peers
-    else
-      peers
+      _ -> peers
     end
   end
 
