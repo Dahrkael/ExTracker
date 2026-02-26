@@ -27,6 +27,7 @@ defmodule ExTracker.Application do
     end
 
     required_children = [
+      { ExTracker.SwarmSnatches, {}},
       { ExTracker.SwarmFinder, {}},
       { ExTracker.SwarmCleaner, {}},
       { ExTracker.Backup, {}}

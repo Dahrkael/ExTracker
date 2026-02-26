@@ -135,4 +135,28 @@ defmodule ExTrackerTest.AnnounceTest do
       assert {:ok, result} = response |> Bento.encode()
     end
   end
+
+  describe "process/2 completion accounting" do
+    test "completion transition increments snatch counter once" do
+      hash = <<67, 235, 5, 218, 118, 194, 91, 240, 38, 247, 16, 121, 195, 64, 217, 74, 14, 46, 101, 11>>
+
+      initial = @valid_params
+        |> Map.put("info_hash", hash)
+        |> Map.put("peer_id", "-GO0001-complete00001")
+        |> Map.put("port", 22440)
+        |> Map.put("left", 100)
+        |> Map.put("event", "started")
+
+      completed = initial
+        |> Map.put("left", 0)
+        |> Map.put("event", "completed")
+
+      assert {:ok, _} = Announce.process(@source_ip, initial)
+      assert {:ok, _} = Announce.process(@source_ip, completed)
+      assert {:ok, _} = Announce.process(@source_ip, completed)
+
+      {:ok, swarm} = ExTracker.SwarmFinder.find(hash)
+      assert ExTracker.Swarm.get_download_count(swarm) == 1
+    end
+  end
 end

@@ -13,11 +13,11 @@ defmodule ExTracker.Types.PeerData do
     last_updated: 0
   ]
 
-  def set_id(peer_data, id) when byte_size(id) == 20 do
+  def set_id(%PeerData{} = peer_data, id) when byte_size(id) == 20 do
     %PeerData{peer_data | id: id}
   end
 
-  def validate_key(peer_data, key) do
+  def validate_key(%PeerData{} = peer_data, key) do
       cond do
         peer_data.key == nil -> true
         peer_data.key == key -> true
@@ -25,7 +25,7 @@ defmodule ExTracker.Types.PeerData do
       end
   end
 
-  def set_key(peer_data, new_key) do
+  def set_key(%PeerData{} = peer_data, new_key) do
     cond do
       peer_data.key == nil -> %PeerData{peer_data | key: new_key}
       peer_data.key == new_key -> peer_data
@@ -33,33 +33,33 @@ defmodule ExTracker.Types.PeerData do
     end
   end
 
-  def update_uploaded(peer_data, value) when is_integer(value) do
+  def update_uploaded(%PeerData{} = peer_data, value) when is_integer(value) do
     case peer_data.uploaded < value do
       true -> %PeerData{peer_data | uploaded: value}
       false -> peer_data
     end
   end
 
-  def update_downloaded(peer_data, value) when is_integer(value) do
+  def update_downloaded(%PeerData{} = peer_data, value) when is_integer(value) do
     case peer_data.downloaded < value do
       true -> %PeerData{peer_data | downloaded: value}
       false -> peer_data
     end
   end
 
-  def update_left(peer_data, value) when is_integer(value) do
+  def update_left(%PeerData{} = peer_data, value) when is_integer(value) do
     %PeerData{peer_data | left: value}
   end
 
-  def update_country(peer_data, country) when is_binary(country) do
+  def update_country(%PeerData{} = peer_data, country) when is_binary(country) do
     %PeerData{peer_data | country: country}
   end
 
-  def update_last_event(peer_data, event) when is_atom(event) do
+  def update_last_event(%PeerData{} = peer_data, event) when is_atom(event) do
     %PeerData{peer_data | last_event: event}
   end
 
-  def update_last_updated(peer_data, timestamp) do
+  def update_last_updated(%PeerData{} = peer_data, timestamp) do
     %PeerData{peer_data | last_updated: timestamp}
   end
 end

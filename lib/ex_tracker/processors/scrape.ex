@@ -42,8 +42,8 @@ defmodule ExTracker.Processors.Scrape do
     {:ok, ExTracker.Swarm.get_leecher_count(swarm, :all)}
   end
 
-  def get_total_downloads(_swarm) do
-    {:ok, 0} #TODO
+  def get_total_downloads(swarm) do
+    {:ok, ExTracker.Swarm.get_download_count(swarm)}
   end
 
   defp generate_success_response(seeders, partial_seeders, leechers, downloads) do

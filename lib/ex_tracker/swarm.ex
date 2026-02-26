@@ -305,6 +305,14 @@ defmodule ExTracker.Swarm do
     get_peers(swarm, count, :partial_seeders, family, include_data)
   end
 
+  def get_download_count(swarm) do
+    ExTracker.SwarmSnatches.get(swarm.hash)
+  end
+
+  def increment_download_count(swarm) do
+    ExTracker.SwarmSnatches.increment(swarm.hash)
+  end
+
   @spec get_stale_peers(swarm :: SwarmID.t(), timestamp :: any()) :: list()
   def get_stale_peers(swarm, timestamp) do
     # on small swarms the peer id is on the second position of the first (key) tuple

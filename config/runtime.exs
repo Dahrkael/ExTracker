@@ -43,6 +43,7 @@ if config_env() in [:prod] do
     backup_auto_interval: (60 * 60 * 1000), # milliseconds between automatic backups
     backup_auto_path: "~/extracker.bck", # file path used for automatic backups
     backup_display_stats: true, # log how many peers and swarms are registered when a backup triggers
+    snatches_delete_on_swarm_remove: false, # delete snatch counters when a swarm is removed
     geoip_enabled: false, # lookup and store the country of each peer
     geoip_license_key: "", # MaxMind's license key. Required for the geoip features
     telemetry_enabled: false, # enable telemetry events gathering

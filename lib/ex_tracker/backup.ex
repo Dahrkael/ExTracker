@@ -109,8 +109,11 @@ defmodule ExTracker.Backup do
             ordered: false)
           |> Enum.map(&elem(&1, 1))
 
-          backup = %{
-          swarms: swarms_backup
+        snatches_backup = ExTracker.SwarmSnatches.get_all()
+
+        backup = %{
+          swarms: swarms_backup,
+          snatches: snatches_backup
         }
 
         File.write(file_path, :erlang.term_to_binary(backup))
@@ -160,6 +163,19 @@ defmodule ExTracker.Backup do
         |> Stream.run()
 
         Logger.notice("backup restored")
+
+        case Map.fetch(backup, :snatches) do
+          {:ok, snatches} when is_list(snatches) ->
+            Enum.each(snatches, fn
+              {hash, count} when is_binary(hash) and is_integer(count) and count >= 0 ->
+                ExTracker.SwarmSnatches.put(hash, count)
+              _other ->
+                :ok
+            end)
+          _ ->
+            :ok
+        end
+
         if Application.get_env(:extracker, :backup_display_stats) do
           ExTracker.Cmd.show_peer_count(:all)
           ExTracker.Cmd.show_swarm_count()

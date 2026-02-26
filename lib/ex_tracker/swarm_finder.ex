@@ -296,6 +296,7 @@ defmodule ExTracker.SwarmFinder do
 
     timestamp = System.system_time(:millisecond)
     :ets.insert(@swarms_table_name, {hash, table, :small, timestamp, timestamp})
+    ExTracker.SwarmSnatches.init(hash)
 
     # TODO add new telemetry for big vs small swarms
     :telemetry.execute([:extracker, :swarm, :created], %{})
@@ -317,6 +318,7 @@ defmodule ExTracker.SwarmFinder do
 
     timestamp = System.system_time(:millisecond)
     :ets.insert(@swarms_table_name, {hash, table, :big, timestamp, timestamp})
+    ExTracker.SwarmSnatches.init(hash)
 
     :telemetry.execute([:extracker, :swarm, :created], %{})
     Logger.debug("created table #{inspect(table_name)} for hash #{Utils.hash_to_string(hash)}")
@@ -375,6 +377,8 @@ defmodule ExTracker.SwarmFinder do
         if type == :big do
           :ets.delete(table)
         end
+
+        ExTracker.SwarmSnatches.delete(hash)
 
         :telemetry.execute([:extracker, :swarm, :destroyed], %{})
         Logger.debug("destroyed swarm for hash #{Utils.hash_to_string(hash)}")
