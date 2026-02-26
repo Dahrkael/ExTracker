@@ -35,7 +35,7 @@ if config_env() in [:prod] do
     peer_cleanup_delay: (60 * 60 * 1_000), # milliseconds after a peer is considered stale and removed
     compress_lookups: true, # compressed lookup tables take less space while losing some performance
     named_lookups: false, # identify each swarm lookup table as "swarm_HASH" instead of just "swarm". Will exhaust the atom table at some point
-    small_swarm_buckets: 1000, # how many buckets are used to hold swarms with not enough peers to have their own lookup table
+    small_swarm_buckets: 100000, # how many buckets are used to hold swarms with not enough peers to have their own lookup table
     swarm_upgrade_peer_threshold: 100, # how many peers need to be inside a swarm to be considered big enough for its own lookup table
     swarm_downgrade_percentage_threshold: 0.25, # percentage of the peer threshold that a swarm needs to lose to become small again
     backup_auto_enabled: false, # enable automatic backups of current swarms and peers creation
@@ -47,7 +47,7 @@ if config_env() in [:prod] do
     geoip_license_key: "", # MaxMind's license key. Required for the geoip features
     telemetry_enabled: false, # enable telemetry events gathering
     telemetry_port: 9568, # port in which telemetry endpoints are served (via HTTP)
-    telemetry_basic: false, # expose a simple HTML stats endpoint at '/tracker-stats.html'
+    telemetry_reporter: "basic", # choose reporter for '/tracker-stats.html' ("basic" or "ets")
     telemetry_prometheus: true, # expose a Prometheus scrape endpoint at '/prometheus'
     reverse_proxy_address: "", # specify the address of a reverse proxy if present (caddy, nginx, apache, etc)
     http_request_timeout: 60_000, # time before *outgoing* http requests timeout (mainly for integrations)

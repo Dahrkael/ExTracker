@@ -11,33 +11,33 @@ defmodule ExTracker.Telemetry.BasicReporter do
     # Client
     #==========================================================================
 
-    def handle_event(_event_name, measurements, metadata, metrics) do
-      metrics |> Enum.map(&handle_metric(&1, measurements, metadata))
+    def handle_event(_event_name, measurements, metadata, metric_ops) do
+      GenServer.cast(__MODULE__, {:metrics_batch, metric_ops, measurements, metadata})
     end
 
-    defp handle_metric(%Telemetry.Metrics.Counter{} = metric, _measurements, metadata) do
-      GenServer.cast(__MODULE__, {:counter, metric.name, metadata})
+    defp to_metric_op(%Telemetry.Metrics.Counter{} = metric) do
+      {:counter, metric.name}
     end
 
-    defp handle_metric(%Telemetry.Metrics.Sum{} = metric, values, metadata) do
-      values |> Enum.each(fn {_key, value} ->
-        GenServer.cast(__MODULE__, {:sum, metric.name, value, metadata})
-      end)
+    defp to_metric_op(%Telemetry.Metrics.Sum{} = metric) do
+      {:sum, metric.name, metric.measurement}
     end
 
-    defp handle_metric(%Telemetry.Metrics.LastValue{} = metric, values, metadata) do
-      values |> Enum.each(fn {_key, value} ->
-        GenServer.cast(__MODULE__, {:last, metric.name, value, metadata})
-      end)
+    defp to_metric_op(%Telemetry.Metrics.LastValue{} = metric) do
+      {:last, metric.name, metric.measurement}
     end
 
-    defp handle_metric(metric, _measurements, _metadata) do
+    defp to_metric_op(metric) do
       Logger.error("Unsupported metric: #{metric.__struct__}. #{inspect(metric.event_name)}")
+      nil
     end
 
     def render_metrics_html() do
       metrics = GenServer.call(__MODULE__, {:get_metrics})
+      render_metrics_html(metrics)
+    end
 
+    def render_metrics_html(metrics) do
       total_swarms = get_in(metrics, [[:extracker, :swarms, :total, :value], :default]) || 0
       bandwidth_in = get_in(metrics, [[:extracker, :bandwidth, :in, :value], :default, :rate]) || 0
       bandwidth_out = get_in(metrics, [[:extracker, :bandwidth, :out, :value], :default, :rate]) || 0
@@ -249,24 +249,40 @@ defmodule ExTracker.Telemetry.BasicReporter do
     def init(args) do
       Process.flag(:trap_exit, true)
       metrics = Keyword.get(args, :metrics, [])
-      groups = Enum.group_by(metrics, & &1.event_name)
+      groups =
+        metrics
+        |> Enum.group_by(& &1.event_name)
+        |> Enum.map(fn {event, event_metrics} ->
+          ops =
+            event_metrics
+            |> Enum.map(&to_metric_op/1)
+            |> Enum.reject(&is_nil/1)
 
-      for {event, metrics} <- groups do
+          {event, ops}
+        end)
+        |> Map.new()
+
+      for {event, metric_ops} <- groups do
         id = {__MODULE__, event, self()}
-        :telemetry.attach(id, event, &__MODULE__.handle_event/4, metrics)
+        :telemetry.attach(id, event, &__MODULE__.handle_event/4, metric_ops)
       end
 
-      state = Enum.map(groups, fn {_event, metrics} ->
-        Enum.map(metrics, fn metric -> {metric.name, %{}} end)
-      end)
-      |> List.flatten()
-      |> Map.new()
+      metrics_state =
+        metrics
+        |> Enum.reduce(%{}, fn metric, acc ->
+          Map.put_new(acc, metric.name, %{})
+        end)
+
+      state = %{
+        events: Map.keys(groups),
+        metrics: metrics_state
+      }
 
       {:ok, state}
     end
 
     @impl true
-    def terminate(_, events) do
+    def terminate(_, %{events: events}) do
       for event <- events do
         :telemetry.detach({__MODULE__, event, self()})
       end
@@ -276,72 +292,72 @@ defmodule ExTracker.Telemetry.BasicReporter do
 
     @impl true
     def handle_call({:get_metrics}, _from, state) do
-      {:reply, state, state}
+      {:reply, state.metrics, state}
     end
 
     @impl true
-    def handle_cast({:counter, metric, metadata}, state) do
-      data = Map.get(state, metric)
+    def handle_cast({:metrics_batch, metric_ops, measurements, metadata}, state) do
       key = get_target_key(metadata)
       now  = System.monotonic_time(:second)
 
-      new_entry = case Map.get(data, key) do
-        nil ->
-          %{prev: 0, value: 1, ts: now, rate: 0}
-        %{prev: prev, value: current, ts: ts, rate: _rate} = entry ->
-          new_value = current + 1
-          elapsed = now - ts
-          if elapsed >= 1 do
-            delta = new_value - prev
-            rate = delta / elapsed
-            %{prev: current, value: new_value, ts: now, rate: rate}
-          else
-            Map.put(entry, :value, new_value)
-          end
-      end
+      updated_metrics =
+        Enum.reduce(metric_ops, state.metrics, fn metric_op, metrics_state ->
+          apply_metric_op(metric_op, measurements, key, now, metrics_state)
+        end)
 
-    updated = Map.put(data, key, new_entry)
-
-      Logger.debug("counter updated: #{inspect(metric)}/#{inspect(metadata)} - value: #{new_entry[:value]}")
-      {:noreply, Map.put(state, metric, updated)}
+      {:noreply, %{state | metrics: updated_metrics}}
     end
 
-    @impl true
-    def handle_cast({:sum, metric, value, metadata}, state) do
-      data = Map.get(state, metric)
-      key = get_target_key(metadata)
-      now  = System.monotonic_time(:second)
-
-      new_entry = case Map.get(data, key) do
-        nil ->
-          %{prev: 0, value: value, ts: now, rate: 0}
-        %{prev: prev, value: current, ts: ts, rate: _rate} = entry ->
-          new_value = current + value
-          elapsed = now - ts
-          if elapsed >= 1 do
-            delta = new_value - prev
-            rate = delta / elapsed
-            %{prev: current, value: new_value, ts: now, rate: rate}
-          else
-            Map.put(entry, :value, new_value)
-          end
-      end
-
-      updated = Map.put(data, key, new_entry)
-
-      Logger.debug("sum updated: #{inspect(metric)}/#{inspect(metadata)} - value: #{new_entry[:value]}")
-      {:noreply, Map.put(state, metric, updated)}
+    defp apply_metric_op({:counter, metric}, _measurements, key, now, metrics_state) do
+      update_rate_metric(metrics_state, metric, key, 1, now)
     end
 
-    @impl true
-    def handle_cast({:last, metric, value, metadata}, state) do
-      data = Map.get(state, metric)
-      key = get_target_key(metadata)
+    defp apply_metric_op({:sum, metric, measurement}, measurements, key, now, metrics_state) do
+      case Map.get(measurements, measurement) do
+        value when is_number(value) ->
+          update_rate_metric(metrics_state, metric, key, value, now)
 
-      updated = Map.put(data, key, value)
+        _other ->
+          metrics_state
+      end
+    end
 
-      Logger.debug("lastValue updated: #{inspect(metric)} - value: #{value}")
-      {:noreply, Map.put(state, metric, updated)}
+    defp apply_metric_op({:last, metric, measurement}, measurements, key, _now, metrics_state) do
+      case Map.fetch(measurements, measurement) do
+        {:ok, value} ->
+          metric_data = Map.get(metrics_state, metric, %{})
+          updated = Map.put(metric_data, key, value)
+
+          Map.put(metrics_state, metric, updated)
+
+        :error ->
+          metrics_state
+      end
+    end
+
+    defp update_rate_metric(metrics_state, metric, key, increment, now) do
+      metric_data = Map.get(metrics_state, metric, %{})
+      new_entry = update_rate_entry(Map.get(metric_data, key), increment, now)
+      updated = Map.put(metric_data, key, new_entry)
+
+      Map.put(metrics_state, metric, updated)
+    end
+
+    defp update_rate_entry(nil, increment, now) do
+      %{prev: 0, value: increment, ts: now, rate: 0}
+    end
+
+    defp update_rate_entry(%{prev: prev, value: current, ts: ts, rate: _rate} = entry, increment, now) do
+      new_value = current + increment
+      elapsed = now - ts
+
+      if elapsed >= 1 do
+        delta = new_value - prev
+        rate = delta / elapsed
+        %{entry | prev: new_value, value: new_value, ts: now, rate: rate}
+      else
+        %{entry | value: new_value}
+      end
     end
 
     defp get_target_key(metadata) do

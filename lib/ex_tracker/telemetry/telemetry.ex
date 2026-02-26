@@ -16,7 +16,7 @@ defmodule ExTracker.Telemetry do
       }
     ]
       ++ get_http_children()
-      ++ get_basic_children()
+      ++ get_reporter_children()
       ++ get_prometheus_children()
 
     Supervisor.init(children, strategy: :one_for_one)
@@ -69,15 +69,6 @@ defmodule ExTracker.Telemetry do
     v4 ++ v6
   end
 
-  defp get_basic_children() do
-    case Application.get_env(:extracker, :telemetry_basic) do
-      true ->
-        Logger.notice("Telemetry Basic endpoint enabled")
-        [{ExTracker.Telemetry.BasicReporter, metrics: metrics()}]
-      _ -> []
-    end
-  end
-
   defp get_prometheus_children() do
      case Application.get_env(:extracker, :telemetry_prometheus) do
       true ->
@@ -85,6 +76,24 @@ defmodule ExTracker.Telemetry do
         [{TelemetryMetricsPrometheus.Core, metrics: metrics()}]
       _ -> []
     end
+  end
+
+  def stats_reporter_module() do
+    case Application.get_env(:extracker, :telemetry_reporter, "basic") do
+      "ets" -> ExTracker.Telemetry.EtsReporter
+      _other -> ExTracker.Telemetry.BasicReporter
+    end
+  end
+
+  def render_tracker_stats_html() do
+    stats_reporter_module().render_metrics_html()
+  end
+
+  defp get_reporter_children() do
+    reporter = stats_reporter_module()
+
+    Logger.notice("Telemetry tracker stats reporter enabled: #{inspect(reporter)}")
+    [{reporter, metrics: metrics()}]
   end
 
   defp metrics do

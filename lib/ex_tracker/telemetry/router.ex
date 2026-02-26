@@ -13,7 +13,7 @@ defmodule ExTracker.Telemetry.Router do
 
   # basic telemetry
   get "/tracker-stats.html" do
-    response = ExTracker.Telemetry.BasicReporter.render_metrics_html()
+    response = ExTracker.Telemetry.render_tracker_stats_html()
     conn
     |> put_resp_content_type("text/html")
     |> put_resp_header("cache-control", "no-cache")
