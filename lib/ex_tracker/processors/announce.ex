@@ -86,12 +86,9 @@ defmodule ExTracker.Processors.Announce do
       |> PeerData.update_left(request.left)
       |> PeerData.update_last_event(request.event)
 
-    updated_data =
-      if peer_data.left > 0 && request.left == 0 do
-        ExTracker.Swarm.increment_download_count(swarm)
-      else
-        updated_data
-      end
+    if peer_data.left > 0 && request.left == 0 do
+      ExTracker.Swarm.increment_download_count(swarm)
+    end
 
     if updated_data.last_event == :stopped do
       # remove the peer as it has abandoned the swarm
