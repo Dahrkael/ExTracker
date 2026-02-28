@@ -18,7 +18,7 @@ defmodule ExTracker.SwarmSnatches do
   def terminate(_reason, _state) do
   end
 
-  def init_if_missing(hash) when is_binary(hash) do
+  def create(hash) when is_binary(hash) do
     :ets.insert_new(@table_name, {hash, 0})
     :ok
   end
@@ -43,14 +43,11 @@ defmodule ExTracker.SwarmSnatches do
     :ets.tab2list(@table_name)
   end
 
-  def delete(hash) when is_binary(hash) do
-    :ets.delete(@table_name, hash)
-    :ok
-  end
-
   def maybe_delete(hash) when is_binary(hash) do
     case Application.get_env(:extracker, :snatches_delete_on_swarm_remove, false) do
-      true -> delete(hash)
+      true ->
+        :ets.delete(@table_name, hash)
+        :ok
       _ -> :ok
     end
   end
