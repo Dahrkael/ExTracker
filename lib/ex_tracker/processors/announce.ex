@@ -87,7 +87,7 @@ defmodule ExTracker.Processors.Announce do
       |> PeerData.update_last_event(request.event)
 
     updated_data =
-      if peer_data.left > 0 && request.left == 0 && !peer_data.completed_counted do
+      if peer_data.left > 0 && request.left == 0 do
         ExTracker.Swarm.increment_download_count(swarm)
       else
         updated_data
