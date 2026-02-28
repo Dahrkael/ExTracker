@@ -149,9 +149,48 @@ defmodule ExTracker.Telemetry do
 
   def measure_peer_totals() do
     try do
-      families = %{all: 0, inet: 0, inet6: 0}
-      seeders = measure_peer_type(families, &ExTracker.Swarm.get_seeder_count/2)
-      leechers = measure_peer_type(families, &ExTracker.Swarm.get_leecher_count/2)
+      zero_totals = %{all: 0, inet: 0, inet6: 0}
+
+      {seeders, leechers} =
+        ExTracker.SwarmFinder.get_swarm_list_stream()
+        |> Task.async_stream(
+          fn swarm ->
+            {
+              %{
+                all: ExTracker.Swarm.get_seeder_count(swarm, :all),
+                inet: ExTracker.Swarm.get_seeder_count(swarm, :inet),
+                inet6: ExTracker.Swarm.get_seeder_count(swarm, :inet6)
+              },
+              %{
+                all: ExTracker.Swarm.get_leecher_count(swarm, :all),
+                inet: ExTracker.Swarm.get_leecher_count(swarm, :inet),
+                inet6: ExTracker.Swarm.get_leecher_count(swarm, :inet6)
+              }
+            }
+          end,
+          ordered: false,
+          max_concurrency: System.schedulers_online()
+        )
+        |> Stream.flat_map(fn
+          {:ok, {swarm_seeders, swarm_leechers}} -> [{swarm_seeders, swarm_leechers}]
+          {:ok, :undefined} -> []
+          {:ok, nil} -> []
+          {:exit, _reason} -> []
+        end)
+        |> Enum.reduce({zero_totals, zero_totals}, fn {swarm_seeders, swarm_leechers}, {acc_seeders, acc_leechers} ->
+          {
+            %{
+              all: acc_seeders.all + (swarm_seeders.all || 0),
+              inet: acc_seeders.inet + (swarm_seeders.inet || 0),
+              inet6: acc_seeders.inet6 + (swarm_seeders.inet6 || 0)
+            },
+            %{
+              all: acc_leechers.all + (swarm_leechers.all || 0),
+              inet: acc_leechers.inet + (swarm_leechers.inet || 0),
+              inet6: acc_leechers.inet6 + (swarm_leechers.inet6 || 0)
+            }
+          }
+        end)
 
       :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.all}, %{family: Atom.to_string(:all)})
       :telemetry.execute([:extracker, :peers, :seeders], %{value: seeders.inet}, %{family: Atom.to_string(:inet)})
@@ -170,21 +209,6 @@ defmodule ExTracker.Telemetry do
       type, value ->
         Logger.error("telemetry measure_peer_totals/1 failed to fully execute: #{inspect({type, value})}")
     end
-  end
-
-  def measure_peer_type(families, count_func) do
-    families
-    |> Enum.map( fn {family, _zero} ->
-      total = ExTracker.SwarmFinder.get_swarm_list_stream()
-      |> Task.async_stream(fn swarm -> count_func.(swarm, family) end, ordered: false)
-      |> Stream.reject(&match?({_, :undefined}, &1))
-      |> Stream.map(&elem(&1, 1))
-      |> Stream.reject(&is_nil(&1))
-      |> Enum.sum()
-
-      {family, total}
-    end)
-    |> Map.new()
   end
 
   def measure_swarms_totals() do
