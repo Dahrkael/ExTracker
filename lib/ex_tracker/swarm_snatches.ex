@@ -43,7 +43,7 @@ defmodule ExTracker.SwarmSnatches do
     :ets.tab2list(@table_name)
   end
 
-  def maybe_delete(hash) when is_binary(hash) do
+  def delete(hash) when is_binary(hash) do
     case Application.get_env(:extracker, :snatches_delete_on_swarm_remove, false) do
       true ->
         :ets.delete(@table_name, hash)
